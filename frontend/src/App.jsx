@@ -12,15 +12,15 @@ import History from "./pages/History";
 function AppLayout() {
   const location = useLocation();
 
-  // ✅ Hide sidebar on login page
+  // To Hide sidebar on login page
   const isLoginPage = location.pathname === "/login";
 
   return (
-    // ✅ Full Background Image (same as your code)
+    // Full Background Image
     <div
       className="min-h-screen bg-cover bg-center bg-no-repeat p-5"
       style={{
-        backgroundImage: "url('/bg.jpg')", //image inside frontend/public
+        backgroundImage: "url('/bg.jpg')", //this is for the image inside frontend
       }}
     >
       <div className="flex gap-5">

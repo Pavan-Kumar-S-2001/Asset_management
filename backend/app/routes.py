@@ -7,7 +7,6 @@ import csv
 
 main = Blueprint("main", __name__)
 
-# ✅ Login required decorator
 def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -16,8 +15,6 @@ def login_required(fn):
         return fn(*args, **kwargs)
     return wrapper
 
-
-# ---------------- BASIC ----------------
 @main.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Asset Management Backend ✅"})
@@ -28,7 +25,7 @@ def health():
     return jsonify({"status": "ok"})
 
 
-# ---------------- LOGIN ----------------
+# This is LOGIN
 @main.route("/login", methods=["POST"])
 def admin_login():
     data = request.json or {}
@@ -52,7 +49,7 @@ def logout():
     return jsonify({"success": True})
 
 
-# ---------------- EMPLOYEES ----------------
+#  EMPLOYEES
 @main.route("/employees", methods=["GET"])
 @login_required
 def list_employees():
@@ -62,7 +59,7 @@ def list_employees():
     return jsonify([dict(r) for r in rows])
 
 
-# ✅ POST EMPLOYEES (Save Employee)
+# SAVE EMPLOYEES
 @main.route("/employees", methods=["POST"])
 @login_required
 def add_employee():
@@ -78,12 +75,12 @@ def add_employee():
     if not emp_name or not emp_id:
         return jsonify({"error": "emp_name and emp_id are required"}), 400
 
-    # ✅ NEW: force insert even if duplicate
+    # insert even if duplicate
     force = request.args.get("force") == "1"
 
     conn = get_db_connection()
 
-    # ✅ NEW: duplicate check for emp_id (only for add)
+    # duplicate check for emp_id
     existing = conn.execute(
         "SELECT id FROM employees WHERE emp_id = ?",
         (emp_id,)
