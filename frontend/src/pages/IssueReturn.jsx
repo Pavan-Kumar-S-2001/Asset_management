@@ -22,18 +22,24 @@ export default function IssueReturn() {
   const [assets, setAssets] = useState([]);
   const [history, setHistory] = useState([]);
 
-  // ✅ Dropdown search
+  // pagination for rental list
+  const [currentPage, setCurrentPage] = useState(1);
+  const rentalsPerPage = 10; // you can change to 20 if needed
+
+  // This is for Dropdown search
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [assetSearch, setAssetSearch] = useState("");
 
-  // rentals
+  // this is rentals
   const [rentals, setRentals] = useState([]);
   const [rentalSearch, setRentalSearch] = useState("");
+  // employee search for return rental
+  const [rentalReturnEmployeeSearch, setRentalReturnEmployeeSearch] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [rentalLoading, setRentalLoading] = useState(false);
 
-  // issue/return main asset
+  // this is issue/return for main asset
   const [issueForm, setIssueForm] = useState({
     employee_id: "",
     asset_id: "",
@@ -45,7 +51,7 @@ export default function IssueReturn() {
     remarks: "",
   });
 
-  // rental add
+  // this is my rental add
   const [rentalAddForm, setRentalAddForm] = useState({
     laptop_name: "",
     serial_number: "",
@@ -54,7 +60,7 @@ export default function IssueReturn() {
     end_date: "",
   });
 
-  // rental issue/return
+  // this is for the rental issue/return
   const [rentalIssueForm, setRentalIssueForm] = useState({
     rental_id: "",
     employee_id: "",
@@ -62,11 +68,12 @@ export default function IssueReturn() {
   });
 
   const [rentalReturnForm, setRentalReturnForm] = useState({
-    rental_id: "",
-    remarks: "",
+  rental_id: "",
+  employee_id: "", // NEW (for search selection only)
+  remarks: "",
   });
 
-  // rental edit modal
+  // this is to rental edit modal
   const [editingRental, setEditingRental] = useState(null);
   const [editRentalForm, setEditRentalForm] = useState({
     laptop_name: "",
@@ -77,7 +84,7 @@ export default function IssueReturn() {
     status: "In Stock",
   });
 
-  // ---------------- load ----------------
+  // to load 
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -116,7 +123,7 @@ export default function IssueReturn() {
     loadRentals();
   }, []);
 
-  // ---------------- computed ----------------
+  // for computed
   const availableAssets = useMemo(
     () => assets.filter((a) => a.status === "Available"),
     [assets]
@@ -139,6 +146,20 @@ export default function IssueReturn() {
       );
     });
   }, [employees, employeeSearch]);
+
+  // NEW: filtered employees for return rental search
+const filteredReturnEmployees = useMemo(() => {
+  const s = rentalReturnEmployeeSearch.toLowerCase().trim();
+  if (!s) return employees;
+
+  return employees.filter((e) => {
+    return (
+      (e.emp_name || "").toLowerCase().includes(s) ||
+      (e.emp_id || "").toLowerCase().includes(s) ||
+      (e.department || "").toLowerCase().includes(s)
+    );
+  });
+}, [employees, rentalReturnEmployeeSearch]);
 
   const filteredAvailableAssets = useMemo(() => {
     const s = assetSearch.toLowerCase().trim();
@@ -181,7 +202,16 @@ export default function IssueReturn() {
     });
   }, [rentals, rentalSearch]);
 
-  // ---------------- main asset handlers ----------------
+  // pagination logic (for 1000+ laptops performance)
+  const paginatedRentals = useMemo(() => {
+    const start = (currentPage - 1) * rentalsPerPage;
+    const end = start + rentalsPerPage;
+    return filteredRentals.slice(start, end);
+  }, [filteredRentals, currentPage]);
+
+  const totalPages = Math.ceil(filteredRentals.length / rentalsPerPage);
+
+  // this is the main asset handlers
   const issueAsset = async (e) => {
     e.preventDefault();
     if (!issueForm.employee_id || !issueForm.asset_id) {
@@ -245,7 +275,7 @@ export default function IssueReturn() {
     }
   };
 
-  // ✅ Quick Return
+  // this is Quick Return
   const quickReturn = async (assignment_id) => {
     const ok = await confirmPopup({
       title: "Return this asset?",
@@ -270,7 +300,7 @@ export default function IssueReturn() {
     }
   };
 
-  // ---------------- rentals handlers ----------------
+  // rentals handlers
   const addRentalLaptop = async (e) => {
     e.preventDefault();
     if (!rentalAddForm.laptop_name || !rentalAddForm.serial_number) {
@@ -294,6 +324,27 @@ export default function IssueReturn() {
       notifyError("Failed to add rental ❌");
     }
   };
+
+  // import rentals CSV
+const importRentalsCSV = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    await api.post("/import/rentals", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    notifySuccess("Rental CSV imported successfully ✅");
+    await loadRentals();
+  } catch (err) {
+    console.error(err);
+    notifyError("Failed to import CSV ❌");
+  }
+};
 
   const issueRentalLaptop = async (e) => {
     e.preventDefault();
@@ -350,7 +401,8 @@ export default function IssueReturn() {
       });
 
       notifySuccess("Rental returned ✅");
-      setRentalReturnForm({ rental_id: "", remarks: "" });
+      // setRentalReturnForm({ rental_id: "", remarks: "" });
+      setRentalReturnForm({ rental_id: "", employee_id: "", remarks: "" });
       await loadRentals();
     } catch (e) {
       console.error(e);
@@ -358,7 +410,7 @@ export default function IssueReturn() {
     }
   };
 
-  // export rentals
+  // this is export rentals
   const exportRentals = () => {
     const base =
       import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
@@ -368,10 +420,10 @@ export default function IssueReturn() {
   const exportIssuedAssets = () => {
     const base =
       import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-    window.open(`${base}/export/rentals.csv`, "_blank");
+    window.open(`${base}/export/issued-assets.csv`, "_blank");
   };
-
-  // edit/delete rental
+  
+  // this for edit or delete rental list
   const openEditRental = (r) => {
     setEditingRental(r);
     setEditRentalForm({
@@ -643,7 +695,7 @@ export default function IssueReturn() {
         </div>
       </div>
 
-      {/* rentals section (UNCHANGED UI, only popups) */}
+      {/* rentals section */}
       <div className="bg-white rounded-2xl shadow p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -680,14 +732,143 @@ export default function IssueReturn() {
           </p>
         </div>
 
+        {/* Rental Laptop List */}
+        <div className="mt-5">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-semibold">Rental Laptop List</h4>
+            <p className="text-xs text-gray-500">
+              Showing {paginatedRentals.length} of {filteredRentals.length}
+            </p>
+          </div>
+
+          <div className="max-h-72 overflow-auto border rounded-xl">
+            <table className="w-full text-sm text-black">
+              <thead className="bg-gray-100 sticky top-0">
+                <tr className="text-left">
+                  <th className="p-2">Laptop</th>
+                  <th className="p-2">Serial</th>
+                  <th className="p-2">Configuration</th>
+                  <th className="p-2">Status</th>
+                  <th className="p-2">Employee</th>
+                  <th className="p-2 text-center">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {paginatedRentals.map((r) => (
+                  <tr key={r.id} className="border-b hover:bg-gray-50">
+                    <td className="p-2 font-semibold">
+                      {r.laptop_name || "-"}
+                    </td>
+
+                    <td className="p-2 font-mono">
+                      {r.serial_number || "-"}
+                    </td>
+
+                    <td className="p-2">
+                      {r.configuration || "-"}
+                    </td>
+
+                    {/* ✅ STATUS BADGE (uses your existing badge function) */}
+                    <td className="p-2">
+                      {badge(r.status)}
+                    </td>
+
+                    <td className="p-2">
+                      {r.employee_name || "—"}
+                    </td>
+
+                    {/* ✅ EDIT + DELETE BUTTONS */}
+                    <td className="p-2">
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          onClick={() => openEditRental(r)}
+                          className="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold"
+                        >
+                          Edit ✏️
+                        </button>
+
+                        <button
+                          onClick={() => deleteRental(r.id)}
+                          className="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-bold"
+                        >
+                          Delete 🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {filteredRentals.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-4 text-center text-gray-500">
+                      No rental laptops found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ✅ PAGINATION CONTROLS */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-3">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded-lg bg-gray-200 text-black text-xs font-bold disabled:opacity-50"
+              >
+                ◀ Prev
+              </button>
+
+              <span className="text-xs font-semibold">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(p + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-lg bg-gray-200 text-black text-xs font-bold disabled:opacity-50"
+              >
+                Next ▶
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* ✅ rest of your JSX stays same */}
         {/* I am not changing UI layout further */}
 
-        {/* (Keeping your full layout same) */}
+                {/* (Keeping your full layout same) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-5">
+
           {/* add rental */}
           <div className="border rounded-2xl p-4">
-            <h3 className="font-bold mb-3">Add Rental Laptop</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold">Add Rental Laptop</h3>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={exportRentals}
+                  className="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold"
+                >
+                  Export CSV
+                </button>
+
+                <label className="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold cursor-pointer">
+                  Import CSV
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={importRentalsCSV}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
 
             <form onSubmit={addRentalLaptop} className="grid gap-3">
               <Input
@@ -814,6 +995,32 @@ export default function IssueReturn() {
             <h3 className="font-bold mb-3">Return Rental Laptop</h3>
 
             <form onSubmit={returnRentalLaptop} className="grid gap-3">
+              <Input
+                placeholder="Search Employee (name / id / dept)..."
+                value={rentalReturnEmployeeSearch}
+                onChange={(e) =>
+                  setRentalReturnEmployeeSearch(e.target.value)
+                }
+              />
+
+              <select
+                className="border rounded-xl p-2 w-full bg-white text-black"
+                value={rentalReturnForm.employee_id}
+                onChange={(e) =>
+                  setRentalReturnForm({
+                    ...rentalReturnForm,
+                    employee_id: e.target.value,
+                  })
+                }
+              >
+                <option value="">Select Employee (optional)</option>
+                {filteredReturnEmployees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.emp_name} ({e.emp_id}) - {e.department}
+                  </option>
+                ))}
+              </select>
+
               <select
                 className="border rounded-xl p-2 w-full bg-white text-black"
                 value={rentalReturnForm.rental_id}
@@ -827,7 +1034,7 @@ export default function IssueReturn() {
                 <option value="">Select Issued Laptop</option>
                 {issuedRentals.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.laptop_name} ({r.serial_number})
+                    {r.laptop_name} ({r.serial_number}) - {r.employee_name || "No Employee"}
                   </option>
                 ))}
               </select>
@@ -852,73 +1059,9 @@ export default function IssueReturn() {
               </p>
             </form>
           </div>
-        </div>
+        </div> {/* ✅ FIX 1: Close grid */}
 
-        {/* rental table */}
-        <div className="mt-6">
-          <h2 className="font-bold text-lg mb-2">Rental Laptops</h2>
-
-          <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-100 text-left">
-                  <th className="p-2">Laptop</th>
-                  <th className="p-2">Serial</th>
-                  <th className="p-2">PO Date</th>
-                  <th className="p-2">End Date</th>
-                  <th className="p-2">Status</th>
-                  <th className="p-2">Employee</th>
-                  <th className="p-2">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredRentals.map((r) => (
-                  <tr key={r.id} className="border-b">
-                    <td className="p-2">
-                      <div className="font-bold">{r.laptop_name}</div>
-                      <div className="text-xs text-gray-500">
-                        {r.configuration}
-                      </div>
-                    </td>
-                    <td className="p-2 font-mono">{r.serial_number}</td>
-                    <td className="p-2">{r.po_date || "-"}</td>
-                    <td className="p-2">{r.end_date || "-"}</td>
-                    <td className="p-2">{badge(r.status)}</td>
-                    <td className="p-2">{r.employee_name || "-"}</td>
-
-                    <td className="p-2">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => openEditRental(r)}
-                          className="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold"
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          onClick={() => deleteRental(r.id)}
-                          className="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-bold"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {filteredRentals.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="p-4 text-center text-gray-500">
-                      No rentals found ✅
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      </div> {/* ✅ FIX 2: Close rentals section card */}
 
       {/* EDIT MODAL (your modal already graphical, no changes needed) */}
       {editingRental && (
@@ -1014,4 +1157,3 @@ export default function IssueReturn() {
     </div>
   );
 }
-

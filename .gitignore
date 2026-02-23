@@ -1,10 +1,43 @@
+# ======================
+# NODE
+# ======================
+node_modules/
+backend/node_modules/
+
+# ======================
+# PYTHON
+# ======================
 venv/
-backend/venv/
-frontend/node_modules/
-frontend/dist/
 __pycache__/
 *.pyc
-.env
+*.pyo
+
+# ======================
+# DATABASE (IMPORTANT)
+# ======================
 *.db
+*.sqlite3
+
+# ======================
+# ENV FILES
+# ======================
+.env
+
+# ======================
+# BUILD FILES
+# ======================
+dist/
+build/
+
+# ======================
+# OS FILES
+# ======================
 .DS_Store
-Asset_management.zip
+Thumbs.db
+
+# ======================
+# LARGE / UNWANTED
+# ======================
+*.exe
+*.zip
+*.log

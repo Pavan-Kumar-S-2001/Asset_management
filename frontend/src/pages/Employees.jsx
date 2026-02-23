@@ -171,13 +171,6 @@ export default function Employees() {
       setLoading(false);
     }
   };
-
-  // const exportCSV = () => {
-  //   const base =
-  //     import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000/api";
-  //   window.open(`${base}/export/employees.csv`, "_blank");
-  // };
-
   // // ✅ CSV parser helper
   const exportCSV = async () => {
   try {

@@ -292,6 +292,20 @@ def issue_asset():
 
     conn = get_db_connection()
 
+    # 🚨 NEW: Prevent issuing already issued asset (BUG FIX)
+    asset = conn.execute(
+        "SELECT status FROM assets WHERE id=?",
+        (asset_id,)
+    ).fetchone()
+
+    if not asset:
+        conn.close()
+        return jsonify({"error": "Asset not found"}), 404
+
+    if asset["status"] == "Issued":
+        conn.close()
+        return jsonify({"error": "Asset already issued"}), 400
+
     conn.execute("""
         INSERT INTO history (employee_id, asset_id, issue_date, status, remarks)
         VALUES (?, ?, ?, 'Issued', ?)
@@ -657,3 +671,56 @@ def upload_rentals_csv():
         "inserted": inserted,
         "skipped": skipped
     })
+# ---------------- EXPORT ISSUED ASSETS CSV (FIXED BUG) ----------------
+@main.route("/export/issued-assets.csv", methods=["GET"])
+@login_required
+def export_issued_assets_csv():
+    conn = get_db_connection()
+    rows = conn.execute("""
+        SELECT h.assignment_id,
+               e.emp_name,
+               e.emp_id,
+               a.asset_type,
+               a.serial_number,
+               h.issue_date,
+               h.return_date,
+               h.status
+        FROM history h
+        JOIN employees e ON h.employee_id = e.id
+        JOIN assets a ON h.asset_id = a.id
+        WHERE h.status = 'Issued'
+        ORDER BY h.assignment_id DESC
+    """).fetchall()
+    conn.close()
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Assignment ID",
+        "Employee Name",
+        "Employee ID",
+        "Asset Type",
+        "Serial Number",
+        "Issue Date",
+        "Return Date",
+        "Status"
+    ])
+
+    for r in rows:
+        writer.writerow([
+            r["assignment_id"],
+            r["emp_name"],
+            r["emp_id"],
+            r["asset_type"],
+            r["serial_number"],
+            r["issue_date"],
+            r["return_date"],
+            r["status"],
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=issued_assets.csv"}
+    )

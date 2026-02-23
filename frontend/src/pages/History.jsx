@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
-
 import { notifyError, notifySuccess } from "../ui/alerts";
 
 export default function History() {
@@ -11,12 +10,53 @@ export default function History() {
   const loadHistory = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/history");
-      const data = Array.isArray(res.data) ? res.data : [];
-      setHistory(data);
+      // Fetch both asset history and rental list
+      const [assetHistoryRes, rentalRes] = await Promise.all([
+        api.get("/history"),   // asset issue/return history
+        api.get("/rentals"),   // rental laptops
+      ]);
+
+      // Asset history (mark as Asset type)
+      const assetHistory = Array.isArray(assetHistoryRes.data)
+        ? assetHistoryRes.data.map((h) => ({
+            ...h,
+            type: "Asset",
+          }))
+        : [];
+
+      // Convert rentals into history logs
+      const rentalHistory = Array.isArray(rentalRes.data)
+        ? rentalRes.data
+            .filter((r) => r.status === "Issued" || r.status === "Returned")
+            .map((r) => ({
+              assignment_id: `rental-${r.id}`, // unique key (IMPORTANT)
+              emp_name: r.employee_name || "-",
+              emp_id: r.employee_id || "-",
+              department: r.department || "-",
+              asset_type: "Rental Laptop",
+              brand_model: r.laptop_name || "-",
+              serial_number: r.serial_number || "-",
+              issue_date: r.issue_date || null,
+              return_date: r.return_date || null,
+              status: r.status || "In Stock",
+              type: "Rental",
+            }))
+        : [];
+
+      // Merge asset + rental history
+      const merged = [...assetHistory, ...rentalHistory];
+
+      // Sort latest first
+      merged.sort((a, b) => {
+        const d1 = new Date(b.issue_date || 0);
+        const d2 = new Date(a.issue_date || 0);
+        return d1 - d2;
+      });
+
+      setHistory(merged);
     } catch (e) {
       console.error(e);
-      notifyError("Backend not reachable ❌ (Check Flask is running on port 5000)");
+      notifyError("Backend not reachable ❌ (Check Flask API)");
     } finally {
       setLoading(false);
     }
@@ -32,6 +72,7 @@ export default function History() {
 
     return history.filter((h) => {
       return (
+        (h.type || "").toLowerCase().includes(s) ||
         (h.emp_name || "").toLowerCase().includes(s) ||
         (h.emp_id || "").toLowerCase().includes(s) ||
         (h.department || "").toLowerCase().includes(s) ||
@@ -44,34 +85,68 @@ export default function History() {
   }, [history, q]);
 
   const exportCSV = async () => {
-  try {
-    const res = await api.get("/export/rentals.csv", { responseType: "blob" });
-    const url = URL.createObjectURL(res.data);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "rentals.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-    notifySuccess("Export started ✅");
-  } catch (e) {
-    console.error(e);
-    notifyError("Export failed ❌");
-  }
-};
+    try {
+      const res = await api.get("/export/history.csv", {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "history.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      notifySuccess("History export started ✅");
+    } catch (e) {
+      console.error(e);
+      notifyError("Export failed ❌");
+    }
+  };
 
-  // const exportCSV = () => {
-  //   const base =
-  //     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-  //   window.open(`${base}/export/rentals.csv`, "_blank");
-  //   notifySuccess("Export started ✅");
-  // };
+  const statusBadge = (status) => {
+    if (status === "Issued") {
+      return (
+        <span className="px-2 py-1 rounded-lg text-xs font-bold bg-yellow-100 text-yellow-800">
+          Issued
+        </span>
+      );
+    }
+    if (status === "Returned") {
+      return (
+        <span className="px-2 py-1 rounded-lg text-xs font-bold bg-green-100 text-green-800">
+          Returned
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-800">
+        {status || "-"}
+      </span>
+    );
+  };
+
+  const typeBadge = (type) => {
+    if (type === "Rental") {
+      return (
+        <span className="px-2 py-1 rounded-lg text-xs font-bold bg-purple-100 text-purple-800">
+          Rental
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-800">
+        Asset
+      </span>
+    );
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow p-6">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-2xl font-bold">History Logs</h1>
-          <p className="text-gray-600 text-sm">Complete issue/return history</p>
+          <p className="text-gray-600 text-sm">
+            Complete Asset + Rental issue/return history
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -93,24 +168,25 @@ export default function History() {
 
       <input
         className="border rounded-xl p-2 w-full"
-        placeholder="Search employee / emp id / serial / status..."
+        placeholder="Search type / employee / emp id / serial / status..."
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
 
       <p className="text-xs text-gray-500 mt-2">
-        Showing {filtered.length} of {history.length}
+        Showing <b>{filtered.length}</b> of <b>{history.length}</b> records
       </p>
 
       <div className="overflow-auto mt-4">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-100 text-left">
+              <th className="p-2">Type</th>
               <th className="p-2">Employee</th>
               <th className="p-2">Asset</th>
               <th className="p-2">Serial</th>
-              <th className="p-2">Issue</th>
-              <th className="p-2">Return</th>
+              <th className="p-2">Issue Date</th>
+              <th className="p-2">Return Date</th>
               <th className="p-2">Status</th>
             </tr>
           </thead>
@@ -118,46 +194,50 @@ export default function History() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-500">
+                <td colSpan={7} className="p-4 text-center text-gray-500">
                   Loading history...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-500">
+                <td colSpan={7} className="p-4 text-center text-gray-500">
                   No history records found.
                 </td>
               </tr>
             ) : (
               filtered.map((h) => (
-                <tr key={h.assignment_id} className="border-b">
+                <tr key={h.assignment_id} className="border-b hover:bg-gray-50">
+                  <td className="p-2">{typeBadge(h.type)}</td>
+
                   <td className="p-2">
                     <div className="font-semibold">{h.emp_name}</div>
-                    <div className="text-xs text- gray-500 font-mono">
+                    <div className="text-xs text-gray-500 font-mono">
                       {h.emp_id}
                     </div>
                   </td>
 
                   <td className="p-2">
                     <div className="font-semibold">{h.asset_type}</div>
-                    <div className="text-xs text-gray-500">{h.brand_model}</div>
+                    <div className="text-xs text-gray-500">
+                      {h.brand_model}
+                    </div>
                   </td>
 
                   <td className="p-2 font-mono">{h.serial_number}</td>
-                  <td className="p-2">{h.issue_date}</td>
-                  <td className="p-2">{h.return_date || "-"}</td>
 
                   <td className="p-2">
-                    <span
-                      className={`px-2 py-1 rounded-lg text-xs font-bold ${
-                        h.status === "Issued"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-green-100 text-green-800"
-                      }`}
-                    >
-                      {h.status}
-                    </span>
+                    {h.issue_date
+                      ? new Date(h.issue_date).toLocaleString()
+                      : "-"}
                   </td>
+
+                  <td className="p-2">
+                    {h.return_date
+                      ? new Date(h.return_date).toLocaleString()
+                      : "-"}
+                  </td>
+
+                  <td className="p-2">{statusBadge(h.status)}</td>
                 </tr>
               ))
             )}
