@@ -78,6 +78,12 @@ export default function Dashboard() {
           onClick={() => navigate("/assets?status=Issued")} // ✅ added
         />
       </div>
+        <StatCard
+          title="History Logs"
+          value={history.length}
+          icon="📜"
+          onClick={() => navigate("/history")}
+        />
 
       {/* Recent history */}
       <div className="bg-white rounded-2xl shadow p-6">

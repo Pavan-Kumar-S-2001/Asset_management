@@ -1,3 +1,5 @@
+from flask_mail import Message
+from .extensions import mail
 from flask import Blueprint, jsonify, request, Response, session
 from functools import wraps
 from .db import get_db_connection
@@ -7,6 +9,7 @@ import csv
 
 main = Blueprint("main", __name__)
 
+# ================= AUTH =================
 def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -15,6 +18,8 @@ def login_required(fn):
         return fn(*args, **kwargs)
     return wrapper
 
+
+# ================= BASIC ROUTES =================
 @main.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Asset Management Backend ✅"})
@@ -25,7 +30,7 @@ def health():
     return jsonify({"status": "ok"})
 
 
-# This is LOGIN
+# ================= ADMIN LOGIN =================
 @main.route("/login", methods=["POST"])
 def admin_login():
     data = request.json or {}
@@ -49,7 +54,7 @@ def logout():
     return jsonify({"success": True})
 
 
-#  EMPLOYEES
+# ================= EMPLOYEES =================
 @main.route("/employees", methods=["GET"])
 @login_required
 def list_employees():
@@ -59,152 +64,7 @@ def list_employees():
     return jsonify([dict(r) for r in rows])
 
 
-# SAVE EMPLOYEES
-@main.route("/employees", methods=["POST"])
-@login_required
-def add_employee():
-    data = request.json or {}
-
-    emp_name = (data.get("emp_name") or "").strip()
-    emp_id = (data.get("emp_id") or "").strip()
-    email = (data.get("email") or "").strip()
-    department = (data.get("department") or "").strip()
-    phone = (data.get("phone") or "").strip()
-    join_date = (data.get("join_date") or "").strip()
-
-    if not emp_name or not emp_id:
-        return jsonify({"error": "emp_name and emp_id are required"}), 400
-
-    # insert even if duplicate
-    force = request.args.get("force") == "1"
-
-    conn = get_db_connection()
-
-    # duplicate check for emp_id
-    existing = conn.execute(
-        "SELECT id FROM employees WHERE emp_id = ?",
-        (emp_id,)
-    ).fetchone()
-
-    if existing and not force:
-        conn.close()
-        return jsonify({"error": "DUPLICATE_EMP_ID"}), 409
-
-    try:
-        conn.execute("""
-            INSERT INTO employees (emp_name, emp_id, email, department, phone, join_date)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (emp_name, emp_id, email, department, phone, join_date))
-        conn.commit()
-    except Exception as e:
-        conn.close()
-        return jsonify({"error": str(e)}), 400
-
-    conn.close()
-    return jsonify({"message": "Employee saved ✅"}), 201
-
-# ---------------- BULK DELETE EMPLOYEES ----------------
-@main.route("/employees/bulk-delete", methods=["POST"])
-@login_required
-def bulk_delete_employees():
-    data = request.json or {}
-    ids = data.get("ids", [])
-
-    if not isinstance(ids, list) or not ids:
-        return jsonify({"error": "ids list required"}), 400
-
-    # keep only integers
-    try:
-        ids = [int(x) for x in ids]
-    except Exception:
-        return jsonify({"error": "Invalid ids"}), 400
-
-    conn = get_db_connection()
-    try:
-        placeholders = ",".join(["?"] * len(ids))
-        conn.execute(f"DELETE FROM employees WHERE id IN ({placeholders})", ids)
-        conn.commit()
-    except Exception as e:
-        conn.close()
-        return jsonify({"error": str(e)}), 400
-
-    conn.close()
-    return jsonify({"message": f"Deleted {len(ids)} employees ✅"}), 200
-
-
-# ---------------- DELETE ALL EMPLOYEES ----------------
-@main.route("/employees/delete-all", methods=["DELETE"])
-@login_required
-def delete_all_employees():
-    conn = get_db_connection()
-    try:
-        conn.execute("DELETE FROM employees")
-        conn.commit()
-    except Exception as e:
-        conn.close()
-        return jsonify({"error": str(e)}), 400
-
-    conn.close()
-    return jsonify({"message": "All employees deleted ✅"}), 200
-
-
-# ---------------- DELETE EMPLOYEE ----------------
-@main.route("/employees/<int:emp_id>", methods=["DELETE"])
-@login_required
-def delete_employee(emp_id):
-    conn = get_db_connection()
-    try:
-        conn.execute("DELETE FROM employees WHERE id = ?", (emp_id,))
-        conn.commit()
-    except Exception as e:
-        conn.close()
-        return jsonify({"error": str(e)}), 400
-
-    conn.close()
-    return jsonify({"message": "Employee deleted ✅"}), 200
-
-
-# ---------------- UPDATE EMPLOYEE ----------------
-@main.route("/employees/<int:emp_db_id>", methods=["PUT"])
-@login_required
-def update_employee(emp_db_id):
-    data = request.json or {}
-
-    emp_name = (data.get("emp_name") or "").strip()
-    emp_id = (data.get("emp_id") or "").strip()
-    email = (data.get("email") or "").strip()
-    department = (data.get("department") or "").strip()
-    phone = (data.get("phone") or "").strip()
-    join_date = (data.get("join_date") or "").strip()
-
-    if not emp_name or not emp_id:
-        return jsonify({"error": "emp_name and emp_id are required"}), 400
-
-    conn = get_db_connection()
-
-    # ✅ IMPORTANT: Allow duplicates (NO duplicate check)
-    try:
-        conn.execute("""
-            UPDATE employees
-            SET emp_name=?,
-                emp_id=?,
-                email=?,
-                department=?,
-                phone=?,
-                join_date=?
-            WHERE id=?
-        """, (emp_name, emp_id, email, department, phone, join_date, emp_db_id))
-
-        conn.commit()
-    except Exception as e:
-        conn.close()
-        return jsonify({"error": str(e)}), 400
-
-    conn.close()
-    return jsonify({"message": "Employee updated ✅"}), 200
-
-
-# ---------------- ASSETS ----------------
+# ================= ASSETS =================
 @main.route("/assets", methods=["GET"])
 @login_required
 def list_assets():
@@ -214,85 +74,26 @@ def list_assets():
     return jsonify([dict(r) for r in rows])
 
 
-@main.route("/assets", methods=["POST"])
-@login_required
-def create_asset():
-    data = request.json or {}
-
-    asset_type = (data.get("asset_type") or "").strip()
-    brand_model = (data.get("brand_model") or "").strip()
-    serial_number = (data.get("serial_number") or "").strip()
-    condition = (data.get("condition") or "Good").strip()
-
-    if not asset_type or not serial_number:
-        return jsonify({"error": "Asset Type and Serial Number required"}), 400
-
-    conn = get_db_connection()
-    try:
-        conn.execute("""
-            INSERT INTO assets (asset_type, brand_model, serial_number, condition, status)
-            VALUES (?, ?, ?, ?, 'Available')
-        """, (asset_type, brand_model, serial_number, condition))
-        conn.commit()
-    except Exception as e:
-        conn.close()
-        return jsonify({"error": str(e)}), 400
-
-    conn.close()
-    return jsonify({"message": "Asset saved ✅"}), 201
-
-
-@main.route("/assets/<int:asset_id>", methods=["PUT"])
-@login_required
-def update_asset(asset_id):
-    data = request.json or {}
-
-    conn = get_db_connection()
-    conn.execute("""
-        UPDATE assets
-        SET asset_type=?,
-            brand_model=?,
-            serial_number=?,
-            condition=?
-        WHERE id=?
-    """, (
-        data.get("asset_type"),
-        data.get("brand_model"),
-        data.get("serial_number"),
-        data.get("condition"),
-        asset_id
-    ))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"message": "Asset updated ✅"})
-
-
-@main.route("/assets/<int:asset_id>", methods=["DELETE"])
-@login_required
-def delete_asset(asset_id):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM assets WHERE id=?", (asset_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({"message": "Asset deleted ✅"})
-
-
-# ---------------- ISSUE / RETURN (COMPANY ASSETS) ----------------
+# ================= ISSUE ASSET =================
 @main.route("/issue", methods=["POST"])
 @login_required
 def issue_asset():
+
     data = request.json or {}
+
     employee_id = data.get("employee_id")
     asset_id = data.get("asset_id")
     remarks = data.get("remarks", "")
+    issued_type = data.get("issued_type", "")
 
     if not employee_id or not asset_id:
         return jsonify({"error": "Missing data"}), 400
 
+    if not issued_type:
+        return jsonify({"error": "Issued Type is required"}), 400
+
     conn = get_db_connection()
 
-    # 🚨 NEW: Prevent issuing already issued asset (BUG FIX)
     asset = conn.execute(
         "SELECT status FROM assets WHERE id=?",
         (asset_id,)
@@ -307,23 +108,74 @@ def issue_asset():
         return jsonify({"error": "Asset already issued"}), 400
 
     conn.execute("""
-        INSERT INTO history (employee_id, asset_id, issue_date, status, remarks)
-        VALUES (?, ?, ?, 'Issued', ?)
-    """, (employee_id, asset_id, datetime.now().isoformat(), remarks))
+        INSERT INTO history
+        (employee_id, asset_id, issue_date, status, remarks, issued_type)
+        VALUES (?, ?, ?, 'Issued', ?, ?)
+    """, (
+        employee_id,
+        asset_id,
+        datetime.now().isoformat(),
+        remarks,
+        issued_type
+    ))
 
-    conn.execute("""
-        UPDATE assets SET status='Issued' WHERE id=?
-    """, (asset_id,))
+    conn.execute(
+        "UPDATE assets SET status='Issued' WHERE id=?",
+        (asset_id,)
+    )
 
     conn.commit()
+
+    # ================= EMAIL NOTIFICATION =================
+
+    employee = conn.execute(
+        "SELECT emp_name, email FROM employees WHERE id=?",
+        (employee_id,)
+    ).fetchone()
+
+    asset_info = conn.execute(
+        "SELECT asset_type, serial_number FROM assets WHERE id=?",
+        (asset_id,)
+    ).fetchone()
+
     conn.close()
 
-    return jsonify({"message": "Asset issued ✅"})
+    if employee and employee["email"]:
+
+        msg = Message(
+            subject="Asset Issued - DTC Infotech",
+            recipients=[employee["email"]],
+        )
+
+        msg.body = f"""
+Hello {employee['emp_name']},
+
+An asset has been issued to you.
+
+Asset Type: {asset_info['asset_type']}
+Serial Number: {asset_info['serial_number']}
+Issued Type: {issued_type}
+
+Issue Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+Regards
+IT Team
+DTC Infotech
+"""
+
+        try:
+            mail.send(msg)
+        except Exception as e:
+            print("Email failed:", e)
+
+    return jsonify({"message": "Asset issued successfully ✅"})
 
 
+# ================= RETURN ASSET =================
 @main.route("/return", methods=["POST"])
 @login_required
 def return_asset():
+
     data = request.json or {}
     assignment_id = data.get("assignment_id")
     remarks = data.get("remarks", "")
@@ -350,9 +202,10 @@ def return_asset():
         WHERE assignment_id=?
     """, (datetime.now().isoformat(), remarks, assignment_id))
 
-    conn.execute("""
-        UPDATE assets SET status='Available' WHERE id=?
-    """, (asset_id,))
+    conn.execute(
+        "UPDATE assets SET status='Available' WHERE id=?",
+        (asset_id,)
+    )
 
     conn.commit()
     conn.close()
@@ -360,38 +213,67 @@ def return_asset():
     return jsonify({"message": "Asset returned ✅"})
 
 
-# ---------------- HISTORY ----------------
+# ================= HISTORY =================
 @main.route("/history", methods=["GET"])
 @login_required
 def list_history():
+
     conn = get_db_connection()
+
     rows = conn.execute("""
-        SELECT h.assignment_id, h.status, h.issue_date, h.return_date,
-               e.emp_name, e.emp_id,
-               a.asset_type, a.serial_number
+        SELECT h.assignment_id,
+               h.status,
+               h.issue_date,
+               h.return_date,
+               h.issued_type,
+               e.emp_name,
+               e.emp_id,
+               a.asset_type,
+               a.serial_number
         FROM history h
         JOIN employees e ON h.employee_id = e.id
         JOIN assets a ON h.asset_id = a.id
         ORDER BY h.assignment_id DESC
     """).fetchall()
+
     conn.close()
+
+    return jsonify([dict(r) for r in rows])
+
+# ================= RENTALS =================
+
+@main.route("/rentals", methods=["GET"])
+@login_required
+def list_rentals():
+
+    conn = get_db_connection()
+
+    rows = conn.execute("""
+        SELECT r.*,
+               e.emp_name
+        FROM rentals r
+        LEFT JOIN employees e ON r.current_employee_id = e.id
+        ORDER BY r.id DESC
+    """).fetchall()
+
+    conn.close()
+
     return jsonify([dict(r) for r in rows])
 
 
-# ---------------- RENTALS ----------------
+# ================= ADD RENTAL =================
+
 @main.route("/rentals", methods=["POST"])
 @login_required
 def add_rental():
+
     data = request.json or {}
 
-    laptop_name = (data.get("laptop_name") or "").strip()
-    serial_number = (data.get("serial_number") or "").strip()
-    configuration = data.get("configuration", "")
-    po_date = data.get("po_date", "")
-    end_date = data.get("end_date", "")
-
-    if not laptop_name or not serial_number:
-        return jsonify({"error": "Laptop name and serial number required"}), 400
+    laptop_name = data.get("laptop_name")
+    serial_number = data.get("serial_number")
+    configuration = data.get("configuration")
+    po_date = data.get("po_date")
+    end_date = data.get("end_date")
 
     conn = get_db_connection()
 
@@ -399,39 +281,31 @@ def add_rental():
         INSERT INTO rentals
         (laptop_name, serial_number, configuration, po_date, end_date, status)
         VALUES (?, ?, ?, ?, ?, 'In Stock')
-    """, (laptop_name, serial_number, configuration, po_date, end_date))
+    """, (
+        laptop_name,
+        serial_number,
+        configuration,
+        po_date,
+        end_date
+    ))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Rental added ✅"})
+    return jsonify({"message": "Rental laptop added ✅"})
 
 
-@main.route("/rentals", methods=["GET"])
-@login_required
-def list_rentals():
-    conn = get_db_connection()
-    rows = conn.execute("""
-        SELECT r.*,
-               e.emp_name AS employee_name
-        FROM rentals r
-        LEFT JOIN employees e ON r.current_employee_id = e.id
-        ORDER BY r.id DESC
-    """).fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
-
+# ================= ISSUE RENTAL =================
 
 @main.route("/rentals/issue", methods=["POST"])
 @login_required
 def issue_rental():
+
     data = request.json or {}
+
     rental_id = data.get("rental_id")
     employee_id = data.get("employee_id")
-    remarks = data.get("remarks", "")
-
-    if not rental_id or not employee_id:
-        return jsonify({"error": "Missing rental_id or employee_id"}), 400
+    remarks = data.get("remarks")
 
     conn = get_db_connection()
 
@@ -442,7 +316,12 @@ def issue_rental():
             issue_date=?,
             remarks=?
         WHERE id=?
-    """, (employee_id, datetime.now().isoformat(), remarks, rental_id))
+    """, (
+        employee_id,
+        datetime.now().isoformat(),
+        remarks,
+        rental_id
+    ))
 
     conn.commit()
     conn.close()
@@ -450,15 +329,16 @@ def issue_rental():
     return jsonify({"message": "Rental issued ✅"})
 
 
+# ================= RETURN RENTAL =================
+
 @main.route("/rentals/return", methods=["POST"])
 @login_required
 def return_rental():
-    data = request.json or {}
-    rental_id = data.get("rental_id")
-    remarks = data.get("remarks", "")
 
-    if not rental_id:
-        return jsonify({"error": "Missing rental_id"}), 400
+    data = request.json or {}
+
+    rental_id = data.get("rental_id")
+    remarks = data.get("remarks")
 
     conn = get_db_connection()
 
@@ -469,7 +349,11 @@ def return_rental():
             return_date=?,
             remarks=?
         WHERE id=?
-    """, (datetime.now().isoformat(), remarks, rental_id))
+    """, (
+        datetime.now().isoformat(),
+        remarks,
+        rental_id
+    ))
 
     conn.commit()
     conn.close()
@@ -477,12 +361,16 @@ def return_rental():
     return jsonify({"message": "Rental returned ✅"})
 
 
+# ================= UPDATE RENTAL =================
+
 @main.route("/rentals/<int:rental_id>", methods=["PUT"])
 @login_required
 def update_rental(rental_id):
+
     data = request.json or {}
 
     conn = get_db_connection()
+
     conn.execute("""
         UPDATE rentals
         SET laptop_name=?,
@@ -504,193 +392,51 @@ def update_rental(rental_id):
 
     conn.commit()
     conn.close()
+
     return jsonify({"message": "Rental updated ✅"})
 
+
+# ================= DELETE RENTAL =================
 
 @main.route("/rentals/<int:rental_id>", methods=["DELETE"])
 @login_required
 def delete_rental(rental_id):
+
     conn = get_db_connection()
-    conn.execute("DELETE FROM rentals WHERE id=?", (rental_id,))
+
+    conn.execute(
+        "DELETE FROM rentals WHERE id=?",
+        (rental_id,)
+    )
+
     conn.commit()
     conn.close()
+
     return jsonify({"message": "Rental deleted ✅"})
 
-
-# ---------------- EXPORT ----------------
-@main.route("/export/rentals.csv", methods=["GET"])
-@login_required
-def export_rentals_csv():
-    conn = get_db_connection()
-    rows = conn.execute("""
-        SELECT laptop_name, serial_number, configuration,
-               po_date, end_date, status, issue_date, return_date
-        FROM rentals
-        ORDER BY id DESC
-    """).fetchall()
-    conn.close()
-
-    output = StringIO()
-    writer = csv.writer(output)
-
-    writer.writerow([
-        "Laptop Name",
-        "Serial Number",
-        "Configuration",
-        "PO Date",
-        "End Date",
-        "Status",
-        "Issue Date",
-        "Return Date"
-    ])
-
-    for r in rows:
-        writer.writerow(list(r))
-
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=rentals.csv"}
-    )
-
-
-@main.route("/export/assets.csv", methods=["GET"])
-@login_required
-def export_assets_csv():
-    conn = get_db_connection()
-    rows = conn.execute("""
-        SELECT asset_type, brand_model, serial_number, condition, status
-        FROM assets
-        ORDER BY id DESC
-    """).fetchall()
-    conn.close()
-
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["Asset Type", "Brand/Model", "Serial Number", "Condition", "Status"])
-
-    for r in rows:
-        writer.writerow(list(r))
-
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=assets.csv"}
-    )
-
-
-@main.route("/export/employees.csv")
-@login_required
-def export_employees_csv():
-    conn = get_db_connection()
-    rows = conn.execute("SELECT emp_name, emp_id, department, email, phone FROM employees").fetchall()
-    conn.close()
-
-    output = StringIO()
-    writer = csv.writer(output)
-
-    writer.writerow(["Employee Name", "Employee ID", "Department", "Email", "Phone"])
-
-    for r in rows:
-        writer.writerow([r["emp_name"], r["emp_id"], r["department"], r["email"], r["phone"]])
-
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=employees.csv"}
-    )
-
-# ---------------- RENTALS CSV UPLOAD ----------------
-@main.route("/rentals/upload-csv", methods=["POST"])
-@login_required
-def upload_rentals_csv():
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files["file"]
-    if not file.filename.lower().endswith(".csv"):
-        return jsonify({"error": "Only CSV files allowed"}), 400
-
-    stream = StringIO(file.stream.read().decode("utf-8"))
-    reader = csv.DictReader(stream)
-
-    required_cols = {
-        "laptop_name",
-        "serial_number",
-        "configuration",
-        "po_date",
-        "end_date",
-    }
-
-    if not required_cols.issubset(reader.fieldnames or []):
-        return jsonify({
-            "error": "Invalid CSV format",
-            "required_columns": list(required_cols)
-        }), 400
-
-    conn = get_db_connection()
-    inserted = 0
-    skipped = 0
-
-    for row in reader:
-        laptop_name = (row.get("laptop_name") or "").strip()
-        serial_number = (row.get("serial_number") or "").strip()
-
-        if not laptop_name or not serial_number:
-            skipped += 1
-            continue
-
-        # skip duplicate serials
-        exists = conn.execute(
-            "SELECT id FROM rentals WHERE serial_number=?",
-            (serial_number,)
-        ).fetchone()
-
-        if exists:
-            skipped += 1
-            continue
-
-        conn.execute("""
-            INSERT INTO rentals
-            (laptop_name, serial_number, configuration, po_date, end_date, status)
-            VALUES (?, ?, ?, ?, ?, 'In Stock')
-        """, (
-            laptop_name,
-            serial_number,
-            row.get("configuration", ""),
-            row.get("po_date", ""),
-            row.get("end_date", "")
-        ))
-
-        inserted += 1
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "inserted": inserted,
-        "skipped": skipped
-    })
-# ---------------- EXPORT ISSUED ASSETS CSV (FIXED BUG) ----------------
+# ================= EXPORT ISSUED ASSETS =================
 @main.route("/export/issued-assets.csv", methods=["GET"])
-@login_required
 def export_issued_assets_csv():
+
     conn = get_db_connection()
+
     rows = conn.execute("""
         SELECT h.assignment_id,
                e.emp_name,
                e.emp_id,
                a.asset_type,
                a.serial_number,
+               h.issued_type,
                h.issue_date,
                h.return_date,
                h.status
         FROM history h
         JOIN employees e ON h.employee_id = e.id
         JOIN assets a ON h.asset_id = a.id
-        WHERE h.status = 'Issued'
+        WHERE h.status='Issued'
         ORDER BY h.assignment_id DESC
     """).fetchall()
+
     conn.close()
 
     output = StringIO()
@@ -702,6 +448,7 @@ def export_issued_assets_csv():
         "Employee ID",
         "Asset Type",
         "Serial Number",
+        "Issued Type",
         "Issue Date",
         "Return Date",
         "Status"
@@ -714,13 +461,230 @@ def export_issued_assets_csv():
             r["emp_id"],
             r["asset_type"],
             r["serial_number"],
+            r["issued_type"],
             r["issue_date"],
             r["return_date"],
-            r["status"],
+            r["status"]
         ])
 
     return Response(
         output.getvalue(),
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=issued_assets.csv"}
+        headers={
+            "Content-Disposition":
+            "attachment; filename=Issued_Assets_List.csv"
+        }
+    )
+
+# ================= EXPORT RENTALS =================
+@main.route("/export/rentals.csv", methods=["GET"])
+def export_rentals_csv():
+
+    conn = get_db_connection()
+
+    rows = conn.execute("""
+        SELECT r.id,
+               r.laptop_name,
+               r.serial_number,
+               r.configuration,
+               r.po_date,
+               r.end_date,
+               r.status,
+               e.emp_name
+        FROM rentals r
+        LEFT JOIN employees e ON r.current_employee_id = e.id
+        ORDER BY r.id DESC
+    """).fetchall()
+
+    conn.close()
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Rental ID",
+        "Laptop Name",
+        "Serial Number",
+        "Configuration",
+        "PO Date",
+        "End Date",
+        "Status",
+        "Assigned Employee"
+    ])
+
+    for r in rows:
+        writer.writerow([
+            r["id"],
+            r["laptop_name"],
+            r["serial_number"],
+            r["configuration"],
+            r["po_date"],
+            r["end_date"],
+            r["status"],
+            r["emp_name"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+            "attachment; filename=Rental_Asset_List.csv"
+        }
+    )
+
+# ================= EXPORT HISTORY =================
+@main.route("/export/history.csv", methods=["GET"])
+def export_history_csv():
+
+    conn = get_db_connection()
+
+    rows = conn.execute("""
+        SELECT h.assignment_id,
+               e.emp_name,
+               e.emp_id,
+               a.asset_type,
+               a.serial_number,
+               h.issued_type,
+               h.issue_date,
+               h.return_date,
+               h.status
+        FROM history h
+        JOIN employees e ON h.employee_id = e.id
+        JOIN assets a ON h.asset_id = a.id
+        ORDER BY h.assignment_id DESC
+    """).fetchall()
+
+    conn.close()
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Assignment ID",
+        "Employee Name",
+        "Employee ID",
+        "Asset Type",
+        "Serial Number",
+        "Issued Type",
+        "Issue Date",
+        "Return Date",
+        "Status"
+    ])
+
+    for r in rows:
+        writer.writerow([
+            r["assignment_id"],
+            r["emp_name"],
+            r["emp_id"],
+            r["asset_type"],
+            r["serial_number"],
+            r["issued_type"],
+            r["issue_date"],
+            r["return_date"],
+            r["status"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+            "attachment; filename=history_logs.csv"
+        }
+    )
+# ================= EXPORT EMPLOYEES =================
+@main.route("/export/employees.csv", methods=["GET"])
+def export_employees_csv():
+
+    conn = get_db_connection()
+
+    rows = conn.execute("""
+        SELECT emp_name,
+               emp_id,
+               email,
+               department,
+               phone,
+               join_date
+        FROM employees
+        ORDER BY id DESC
+    """).fetchall()
+
+    conn.close()
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Employee Name",
+        "Employee ID",
+        "Email",
+        "Department",
+        "Phone",
+        "Join Date"
+    ])
+
+    for r in rows:
+        writer.writerow([
+            r["emp_name"],
+            r["emp_id"],
+            r["email"],
+            r["department"],
+            r["phone"],
+            r["join_date"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+            "attachment; filename=Employees_List.csv"
+        }
+    )
+# ================= EXPORT ASSETS =================
+@main.route("/export/assets.csv", methods=["GET"])
+def export_assets_csv():
+
+    conn = get_db_connection()
+
+    rows = conn.execute("""
+        SELECT asset_type,
+               brand_model,
+               serial_number,
+               condition,
+               status
+        FROM assets
+        ORDER BY id DESC
+    """).fetchall()
+
+    conn.close()
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Asset Type",
+        "Brand Model",
+        "Serial Number",
+        "Condition",
+        "Status"
+    ])
+
+    for r in rows:
+        writer.writerow([
+            r["asset_type"],
+            r["brand_model"],
+            r["serial_number"],
+            r["condition"],
+            r["status"]
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition":
+            "attachment; filename=Assets_List.csv"
+        }
     )

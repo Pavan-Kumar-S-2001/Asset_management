@@ -29,6 +29,12 @@ export default function IssueReturn() {
   // This is for Dropdown search
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [assetSearch, setAssetSearch] = useState("");
+  const [filterEmployee, setFilterEmployee] = useState("");
+  const [filterAssetType, setFilterAssetType] = useState("");
+  const [filterIssuedType, setFilterIssuedType] = useState("");
+
+  const [issuedType, setIssuedType] = useState("");
+  const [trackingNumber, setTrackingNumber] = useState("");
 
   // this is rentals
   const [rentals, setRentals] = useState([]);
@@ -44,6 +50,9 @@ export default function IssueReturn() {
     employee_id: "",
     asset_id: "",
     remarks: "",
+    issued_type: "",
+    other_issue_type: "",
+    tracking_number: "", // NEW
   });
 
   const [returnForm, setReturnForm] = useState({
@@ -129,10 +138,31 @@ export default function IssueReturn() {
     [assets]
   );
 
-  const issuedAssignments = useMemo(
-    () => history.filter((h) => h.status === "Issued"),
-    [history]
-  );
+  const issuedAssignments = useMemo(() => {
+    return history.filter((h) => {
+      if (h.status !== "Issued") return false;
+
+      if (
+        filterEmployee &&
+        !(h.emp_name || "").toLowerCase().includes(filterEmployee.toLowerCase())
+      )
+        return false;
+
+      if (
+        filterAssetType &&
+        !(h.asset_type || "").toLowerCase().includes(filterAssetType.toLowerCase())
+      )
+        return false;
+
+      if (
+        filterIssuedType &&
+        (h.issued_type || "") !== filterIssuedType
+      )
+        return false;
+
+      return true;
+    });
+  }, [history, filterEmployee, filterAssetType, filterIssuedType]);
 
   const filteredEmployees = useMemo(() => {
     const s = employeeSearch.toLowerCase().trim();
@@ -147,7 +177,7 @@ export default function IssueReturn() {
     });
   }, [employees, employeeSearch]);
 
-  // NEW: filtered employees for return rental search
+  //filtered employees for return rental search
 const filteredReturnEmployees = useMemo(() => {
   const s = rentalReturnEmployeeSearch.toLowerCase().trim();
   if (!s) return employees;
@@ -220,7 +250,7 @@ const filteredReturnEmployees = useMemo(() => {
     }
 
     const ok = await confirmPopup({
-      title: "Issue Asset?",
+      title: "Issued Asset?",
       text: "Are you sure you want to issue this asset?",
       confirmButtonText: "Yes, Issue",
       cancelButtonText: "Cancel",
@@ -229,13 +259,26 @@ const filteredReturnEmployees = useMemo(() => {
     if (!ok) return;
 
     try {
+
       await api.post("/issue", {
         employee_id: Number(issueForm.employee_id),
         asset_id: Number(issueForm.asset_id),
         remarks: issueForm.remarks,
+        issued_type:
+          issueForm.issued_type === "Others"
+            ? issueForm.other_issue_type
+            : issueForm.issued_type,
+        tracking_number: issueForm.tracking_number || "",
       });
-
-      setIssueForm({ employee_id: "", asset_id: "", remarks: "" });
+      
+      setIssueForm({
+        employee_id: "",
+        asset_id: "",
+        remarks: "",
+        issued_type: "",
+        other_issue_type: "",
+        tracking_number: "",
+      });
       await loadAll();
       notifySuccess("Asset issued ✅");
     } catch (e2) {
@@ -496,7 +539,7 @@ const importRentalsCSV = async (e) => {
         <div className="bg-white rounded-2xl shadow p-6">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
-              <h1 className="text-2xl font-bold">Issue Asset</h1>
+              <h1 className="text-2xl font-bold">Issued Asset</h1>
               <p className="text-gray-600 text-sm">
                 Issue available asset to employee
               </p>
@@ -531,6 +574,48 @@ const importRentalsCSV = async (e) => {
                 </option>
               ))}
             </select>
+
+            {/* 🔥 Issued Type Dropdown */}
+
+            <select
+              className="border rounded-xl p-2 w-full bg-white text-black"
+              value={issueForm.issued_type}
+              onChange={(e) =>
+                setIssueForm({ ...issueForm, issued_type: e.target.value })
+              }
+            >
+              <option value="">Select Issued Type</option>
+              <option value="By Hand">By Hand</option>
+              <option value="By DTDC Courier">By DTDC Courier</option>
+              <option value="Others">Others</option>
+            </select>
+              
+            {/* COURIER TRACKING FIELD */}
+            {issueForm.issued_type === "By DTDC Courier" && (
+              <Input
+                placeholder="Enter DTDC Tracking Number..."
+                value={issueForm.tracking_number}
+                onChange={(e) =>
+                  setIssueForm({
+                    ...issueForm,
+                    tracking_number: e.target.value,
+                  })
+                }
+              />
+            )}
+
+            {issueForm.issued_type === "Others" && (
+              <Input
+                placeholder="Enter custom issued type..."
+                value={issueForm.other_issue_type}
+                onChange={(e) =>
+                  setIssueForm({
+                    ...issueForm,
+                    other_issue_type: e.target.value,
+                  })
+                }
+              />
+            )}
 
             <Input
               placeholder="Search Available Asset (type / serial / brand)..."
@@ -616,6 +701,32 @@ const importRentalsCSV = async (e) => {
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-xl font-bold text-black">Issued Assets List</h2>
+            {/* 🔎 Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3 mb-3">
+
+              <Input
+                placeholder="Filter by Employee..."
+                value={filterEmployee}
+                onChange={(e) => setFilterEmployee(e.target.value)}
+              />
+
+              <Input
+                placeholder="Filter by Asset Type..."
+                value={filterAssetType}
+                onChange={(e) => setFilterAssetType(e.target.value)}
+              />
+
+              <select
+                className="border rounded-xl p-2 bg-white text-black"
+                value={filterIssuedType}
+                onChange={(e) => setFilterIssuedType(e.target.value)}
+              >
+                <option value="">All Issue Types</option>
+                <option value="By Hand">By Hand</option>
+                <option value="By DTDC Courier">By DTDC Courier</option>
+              </select>
+
+            </div>
             <p className="text-gray-600 text-sm">
               Return assets directly from this table
             </p>
@@ -649,6 +760,7 @@ const importRentalsCSV = async (e) => {
                 <th className="p-2">Employee</th>
                 <th className="p-2">Asset</th>
                 <th className="p-2">Serial</th>
+                <th className="p-2">Issued Type</th>
                 <th className="p-2">Issue Date</th>
                 <th className="p-2">Action</th>
               </tr>
@@ -665,6 +777,11 @@ const importRentalsCSV = async (e) => {
                   <td className="p-2">{h.asset_type}</td>
 
                   <td className="p-2 font-mono">{h.serial_number}</td>
+
+                  {/* 🔥 ADD THIS NEW COLUMN */}
+                  <td className="p-2">
+                    {h.issued_type || "-"}
+                  </td>
 
                   <td className="p-2">
                     {h.issue_date
@@ -685,7 +802,7 @@ const importRentalsCSV = async (e) => {
 
               {issuedAssignments.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-gray-500">
+                  <td colSpan={6} className="p-4 text-center text-gray-500">
                     No issued assets found ✅
                   </td>
                 </tr>

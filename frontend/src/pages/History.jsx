@@ -85,22 +85,25 @@ export default function History() {
   }, [history, q]);
 
   const exportCSV = async () => {
-    try {
-      const res = await api.get("/export/history.csv", {
-        responseType: "blob",
-      });
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "history.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-      notifySuccess("History export started ✅");
-    } catch (e) {
-      console.error(e);
-      notifyError("Export failed ❌");
-    }
-  };
+  try {
+    const res = await api.get("/export/issued-assets.csv", {
+      responseType: "blob",
+    });
+
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "History.csv");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    notifySuccess("History export started ✅");
+  } catch (e) {
+    console.error(e);
+    notifyError("Export failed ❌");
+  }
+};
 
   const statusBadge = (status) => {
     if (status === "Issued") {
