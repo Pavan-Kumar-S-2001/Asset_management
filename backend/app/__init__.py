@@ -21,7 +21,7 @@ def create_app():
     app.config["MAIL_USE_TLS"] = True
     app.config["MAIL_USE_SSL"] = False
     app.config["MAIL_USERNAME"] = "it@dtcinfotech.com"
-    app.config["MAIL_PASSWORD"] = "Pa1@kumar2000"
+    app.config["MAIL_PASSWORD"] = ""
     app.config["MAIL_DEFAULT_SENDER"] = "it@dtcinfotech.com"
 
     mail.init_app(app)
