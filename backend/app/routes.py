@@ -370,10 +370,9 @@ DTC Infotech
 
         try:
             mail.send(msg)
+            print("✅ Email sent successfully to:", employee["email"])
         except Exception as e:
-            print("Email failed:", e)
-
-    return jsonify({"message": "Asset issued successfully ✅"})
+            print("❌ Email failed:", e)
 
 
 # ================= RETURN ASSET =================

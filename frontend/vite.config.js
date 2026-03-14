@@ -5,18 +5,18 @@ export default defineConfig({
   plugins: [react()],
 
   server: {
+    host: true, // IMPORTANT for Docker
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://backend:5000", // Docker service name
         changeOrigin: true,
         secure: false,
       },
     },
   },
 
-  
   build: {
-    sourcemap: false, 
-    minify: true,     
+    sourcemap: false,
+    minify: true,
   },
 });
