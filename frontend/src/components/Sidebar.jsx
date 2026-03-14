@@ -128,7 +128,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-80 bg-white shadow-xl rounded-2xl h-[calc(100vh-40px)] sticky top-5 flex flex-col">
+    <aside className="w-80 bg-white shadow-xl rounded-2xl h-[calc(100vh-40px)] sticky top-0 flex flex-col">
 
       {/* COMPANY HEADER */}
       <div className="p-5 border-b">

@@ -206,7 +206,7 @@ export default function History() {
       </div>
 
       <input
-        className="border rounded-xl p-2 w-full"
+        className="bg-white text-black border border-gray-300 rounded-xl p-2 w-full"
         placeholder="Search type / employee / emp id / serial / status..."
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -217,9 +217,9 @@ export default function History() {
       </p>
 
       <div className="overflow-auto mt-4">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm text-black">
           <thead>
-            <tr className="bg-gray-100 text-left">
+            <tr className="bg-white text-black border-b">
               <th className="p-2">Type</th>
               <th className="p-2">Employee</th>
               <th className="p-2">Asset</th>

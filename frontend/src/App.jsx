@@ -18,7 +18,7 @@ function AppLayout() {
   return (
     // Full Background Image
     <div
-      className="min-h-screen bg-cover bg-center bg-no-repeat p-5"
+      className="min-h-screen bg-cover bg-center bg-no-repeat bg-fixed p-5"
       style={{
         backgroundImage: "url('/bg.jpg')", //this is for the image inside frontend
       }}
