@@ -376,6 +376,46 @@ DTC Infotech
 
 
 # ================= RETURN ASSET =================
+# @main.route("/return", methods=["POST"])
+# @login_required
+# def return_asset():
+
+#     data = request.json or {}
+#     assignment_id = data.get("assignment_id")
+#     remarks = data.get("remarks", "")
+
+#     if not assignment_id:
+#         return jsonify({"error": "Missing assignment_id"}), 400
+
+#     conn = get_db_connection()
+
+#     row = conn.execute(
+#         "SELECT asset_id FROM history WHERE assignment_id=?",
+#         (assignment_id,)
+#     ).fetchone()
+
+#     if not row:
+#         conn.close()
+#         return jsonify({"error": "Invalid assignment"}), 400
+
+#     asset_id = row["asset_id"]
+
+#     conn.execute("""
+#         UPDATE history
+#         SET return_date=?, status='Returned', remarks=?
+#         WHERE assignment_id=?
+#     """, (datetime.now().isoformat(), remarks, assignment_id))
+
+#     conn.execute(
+#         "UPDATE assets SET status='Available' WHERE id=?",
+#         (asset_id,)
+#     )
+
+#     conn.commit()
+#     conn.close()
+
+#     return jsonify({"message": "Asset returned ✅"})
+
 @main.route("/return", methods=["POST"])
 @login_required
 def return_asset():
@@ -390,7 +430,7 @@ def return_asset():
     conn = get_db_connection()
 
     row = conn.execute(
-        "SELECT asset_id FROM history WHERE assignment_id=?",
+        "SELECT asset_id, employee_id FROM history WHERE assignment_id=?",
         (assignment_id,)
     ).fetchone()
 
@@ -399,6 +439,7 @@ def return_asset():
         return jsonify({"error": "Invalid assignment"}), 400
 
     asset_id = row["asset_id"]
+    employee_id = row["employee_id"]
 
     conn.execute("""
         UPDATE history
@@ -412,7 +453,50 @@ def return_asset():
     )
 
     conn.commit()
+
+    # ---------- EMAIL NOTIFICATION ----------
+
+    employee = conn.execute(
+        "SELECT emp_name, email FROM employees WHERE id=?",
+        (employee_id,)
+    ).fetchone()
+
+    asset_info = conn.execute(
+        "SELECT asset_type, serial_number FROM assets WHERE id=?",
+        (asset_id,)
+    ).fetchone()
+
     conn.close()
+
+    if employee and employee["email"]:
+
+        msg = Message(
+            subject="Asset Return Confirmation - DTC Infotech",
+            recipients=[employee["email"]],
+        )
+
+        msg.body = f"""
+Hello {employee['emp_name']},
+
+Your assigned asset has been successfully returned.
+
+Asset Type: {asset_info['asset_type']}
+Serial Number: {asset_info['serial_number']}
+
+Return Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+Remarks: {remarks}
+
+Regards
+IT Team
+DTC Infotech
+"""
+
+        try:
+            mail.send(msg)
+            print("✅ Return email sent to:", employee["email"])
+        except Exception as e:
+            print("❌ Return email failed:", e)
 
     return jsonify({"message": "Asset returned ✅"})
 

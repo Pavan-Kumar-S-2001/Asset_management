@@ -50,3 +50,4 @@ def create_app():
     init_db()
     app.register_blueprint(main, url_prefix="/api")
     return app
+
