@@ -96,22 +96,31 @@ export default function IssueReturn() {
   // to load 
   const loadAll = async () => {
     setLoading(true);
+
+    
     try {
+
       const [emp, ast, his] = await Promise.all([
         api.get("/employees"),
         api.get("/assets"),
-        api.get("/history"),
+        api.get("/history")
       ]);
 
       setEmployees(Array.isArray(emp.data) ? emp.data : []);
       setAssets(Array.isArray(ast.data) ? ast.data : []);
       setHistory(Array.isArray(his.data) ? his.data : []);
+
     } catch (e) {
-      console.error(e);
-      notifyError("Backend not reachable ❌");
+
+      console.error("API Error:", e.response?.data || e.message);
+
+      notifyError("Backend API error ❌ Check server");
+
     } finally {
+
       setLoading(false);
-    }
+
+    } 
   };
 
   const loadRentals = async () => {

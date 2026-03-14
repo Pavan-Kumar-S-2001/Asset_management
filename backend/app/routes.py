@@ -63,6 +63,109 @@ def list_employees():
     conn.close()
     return jsonify([dict(r) for r in rows])
 
+@main.route("/employees", methods=["POST"])
+@login_required
+def add_employee():
+
+    data = request.json or {}
+
+    conn = get_db_connection()
+
+    conn.execute("""
+        INSERT INTO employees
+        (emp_name, emp_id, email, department, phone, join_date)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        data.get("emp_name"),
+        data.get("emp_id"),
+        data.get("email"),
+        data.get("department"),
+        data.get("phone"),
+        data.get("join_date")
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Employee added successfully"})
+
+@main.route("/employees/bulk-delete", methods=["POST"])
+@login_required
+def bulk_delete_employees():
+
+    data = request.json or {}
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({"error": "No IDs provided"}), 400
+
+    conn = get_db_connection()
+
+    for emp_id in ids:
+        conn.execute(
+            "DELETE FROM employees WHERE id=?",
+            (emp_id,)
+        )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Employees deleted successfully"})
+
+@main.route("/employees/delete-all", methods=["DELETE"])
+@login_required
+def delete_all_employees():
+
+    conn = get_db_connection()
+
+    conn.execute("DELETE FROM employees")
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "All employees deleted"})
+
+@main.route("/employees/<int:emp_id>", methods=["PUT"])
+@login_required
+def update_employee(emp_id):
+
+    data = request.json or {}
+
+    conn = get_db_connection()
+
+    conn.execute("""
+        UPDATE employees
+        SET emp_name=?, emp_id=?, department=?, email=?, phone=?
+        WHERE id=?
+    """, (
+        data.get("emp_name"),
+        data.get("emp_id"),
+        data.get("department"),
+        data.get("email"),
+        data.get("phone"),
+        emp_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Employee updated successfully"})
+
+@main.route("/employees/<int:emp_id>", methods=["DELETE"])
+@login_required
+def delete_employee(emp_id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM employees WHERE id=?",
+        (emp_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Employee deleted successfully"})
 
 # ================= ASSETS =================
 @main.route("/assets", methods=["GET"])
@@ -72,6 +175,108 @@ def list_assets():
     rows = conn.execute("SELECT * FROM assets ORDER BY id DESC").fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+@main.route("/assets", methods=["POST"])
+@login_required
+def add_asset():
+
+    data = request.json or {}
+
+    conn = get_db_connection()
+
+    conn.execute("""
+        INSERT INTO assets
+        (asset_type, brand_model, serial_number, condition, status)
+        VALUES (?, ?, ?, ?, 'Available')
+    """, (
+        data.get("asset_type"),
+        data.get("brand_model"),
+        data.get("serial_number"),
+        data.get("condition")
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Asset added successfully"})
+
+@main.route("/assets/<int:asset_id>", methods=["PUT"])
+@login_required
+def update_asset(asset_id):
+
+    data = request.json or {}
+
+    conn = get_db_connection()
+
+    conn.execute("""
+        UPDATE assets
+        SET asset_type=?, brand_model=?, serial_number=?, condition=?, status=?
+        WHERE id=?
+    """, (
+        data.get("asset_type"),
+        data.get("brand_model"),
+        data.get("serial_number"),
+        data.get("condition"),
+        data.get("status"),
+        asset_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Asset updated successfully"})
+
+@main.route("/assets/<int:asset_id>", methods=["DELETE"])
+@login_required
+def delete_asset(asset_id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM assets WHERE id=?",
+        (asset_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Asset deleted successfully"})
+
+@main.route("/assets/bulk-delete", methods=["POST"])
+@login_required
+def bulk_delete_assets():
+
+    data = request.json or {}
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({"error": "No IDs provided"}), 400
+
+    conn = get_db_connection()
+
+    for asset_id in ids:
+        conn.execute(
+            "DELETE FROM assets WHERE id=?",
+            (asset_id,)
+        )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Assets deleted successfully"})
+
+@main.route("/assets/delete-all", methods=["DELETE"])
+@login_required
+def delete_all_assets():
+
+    conn = get_db_connection()
+
+    conn.execute("DELETE FROM assets")
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "All assets deleted"})
 
 
 # ================= ISSUE ASSET =================
@@ -222,23 +427,79 @@ def list_history():
 
     rows = conn.execute("""
         SELECT h.assignment_id,
-               h.status,
-               h.issue_date,
-               h.return_date,
-               h.issued_type,
-               e.emp_name,
-               e.emp_id,
-               a.asset_type,
-               a.serial_number
+                h.status,
+                h.issue_date,
+                h.return_date,
+                h.issued_type,
+                e.emp_name,
+                e.emp_id,
+                a.asset_type,
+                a.serial_number
         FROM history h
-        JOIN employees e ON h.employee_id = e.id
-        JOIN assets a ON h.asset_id = a.id
+        LEFT JOIN employees e ON h.employee_id = e.id
+        LEFT JOIN assets a ON h.asset_id = a.id
         ORDER BY h.assignment_id DESC
     """).fetchall()
 
     conn.close()
 
     return jsonify([dict(r) for r in rows])
+
+@main.route("/history/<int:assignment_id>", methods=["PUT"])
+@login_required
+def update_history(assignment_id):
+
+    data = request.json or {}
+
+    conn = get_db_connection()
+
+    conn.execute("""
+        UPDATE history
+        SET remarks=?, issued_type=?
+        WHERE assignment_id=?
+    """, (
+        data.get("remarks"),
+        data.get("issued_type"),
+        assignment_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "History updated successfully"})
+
+@main.route("/history/<int:assignment_id>", methods=["DELETE"])
+@login_required
+def delete_history(assignment_id):
+
+    conn = get_db_connection()
+
+    row = conn.execute(
+        "SELECT asset_id FROM history WHERE assignment_id=?",
+        (assignment_id,)
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({"error": "Record not found"}), 404
+
+    asset_id = row["asset_id"]
+
+    conn.execute(
+        "DELETE FROM history WHERE assignment_id=?",
+        (assignment_id,)
+    )
+
+    conn.execute(
+        "UPDATE assets SET status='Available' WHERE id=?",
+        (asset_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "History record deleted"})
+
 
 # ================= RENTALS =================
 
@@ -250,7 +511,7 @@ def list_rentals():
 
     rows = conn.execute("""
         SELECT r.*,
-               e.emp_name
+               e.emp_name AS employee_name
         FROM rentals r
         LEFT JOIN employees e ON r.current_employee_id = e.id
         ORDER BY r.id DESC

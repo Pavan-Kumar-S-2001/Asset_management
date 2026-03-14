@@ -5,13 +5,13 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y sqlite3 && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN mkdir -p /app/data
+
 EXPOSE 5000
 
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "--timeout", "120", "--workers", "2", "wsgi:app"]
-
-
-
+CMD ["python", "run.py"]

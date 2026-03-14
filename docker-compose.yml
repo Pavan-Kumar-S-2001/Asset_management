@@ -1,23 +1,54 @@
+# services:
+#   backend:
+#     build:
+#       context: ./backend
+#     container_name: asset_backend
+#     ports:
+#       - "5000:5000"
+#     volumes:
+#       - backend_data:/app/data
+#     restart: unless-stopped
+
+#   frontend:
+#     build:
+#       context: ./frontend
+#     container_name: asset_frontend
+#     ports:
+#       - "5173:80"     # ✅ ONE PORT for website + API
+#     depends_on:
+#       - backend
+#     restart: unless-stopped
+
+# volumes:
+#   backend_data:
+
+version: "3.9"
+
 services:
+
   backend:
-    build:
-      context: ./backend
+    build: ./backend
     container_name: asset_backend
     ports:
       - "5000:5000"
     volumes:
-      - backend_data:/app/data
-    restart: unless-stopped
+      - ./backend:/app
+      - sqlite_data:/app/data
+    environment:
+      - FLASK_ENV=development
+    restart: always
 
   frontend:
-    build:
-      context: ./frontend
+    build: ./frontend
     container_name: asset_frontend
     ports:
-      - "5173:80"     # ✅ ONE PORT for website + API
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
-    restart: unless-stopped
+    restart: always
 
 volumes:
-  backend_data:
+  sqlite_data:
