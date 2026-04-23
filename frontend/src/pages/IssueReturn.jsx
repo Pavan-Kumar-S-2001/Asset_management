@@ -28,6 +28,8 @@ export default function IssueReturn() {
 
   // This is for Dropdown search
   const [employeeSearch, setEmployeeSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
   const [assetSearch, setAssetSearch] = useState("");
   const [filterEmployee, setFilterEmployee] = useState("");
   const [filterAssetType, setFilterAssetType] = useState("");
@@ -95,33 +97,25 @@ export default function IssueReturn() {
 
   // to load 
   const loadAll = async () => {
-    setLoading(true);
+  setLoading(true);
 
-    
-    try {
+  try {
+    const [emp, ast, issued] = await Promise.all([
+      api.get("/employees"),
+      api.get("/assets"),
+      api.get("/issued-assets") // ✅ FIXED
+    ]);
 
-      const [emp, ast, his] = await Promise.all([
-        api.get("/employees"),
-        api.get("/assets"),
-        api.get("/history")
-      ]);
-
-      setEmployees(Array.isArray(emp.data) ? emp.data : []);
-      setAssets(Array.isArray(ast.data) ? ast.data : []);
-      setHistory(Array.isArray(his.data) ? his.data : []);
-
-    } catch (e) {
-
-      console.error("API Error:", e.response?.data || e.message);
-
-      notifyError("Backend API error ❌ Check server");
-
-    } finally {
-
-      setLoading(false);
-
-    } 
-  };
+    setEmployees(emp.data || []);
+    setAssets(ast.data || []);
+    setHistory(issued.data || []); // now only issued data
+  } catch (e) {
+    console.error(e);
+    notifyError("Backend API error ❌");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const loadRentals = async () => {
     setRentalLoading(true);
@@ -137,9 +131,19 @@ export default function IssueReturn() {
   };
 
   useEffect(() => {
-    loadAll();
-    loadRentals();
-  }, []);
+  loadAll();        
+  loadRentals();   
+}, []);
+
+useEffect(() => {
+  const handleClickOutside = () => {
+    setShowDropdown(false);
+  };
+
+  window.addEventListener("click", handleClickOutside);
+  return () => window.removeEventListener("click", handleClickOutside);
+}, []);
+
 
   // for computed
   const availableAssets = useMemo(
@@ -148,57 +152,107 @@ export default function IssueReturn() {
   );
 
   const issuedAssignments = useMemo(() => {
-    return history.filter((h) => {
-      if (h.status !== "Issued") return false;
+  return history.filter((h) => {
+    const empName = (h.emp_name || "").toLowerCase().trim();
+    const assetType = (h.asset_type || "").toLowerCase().trim();
+    const searchEmp = filterEmployee.toLowerCase().trim();
+    const searchAsset = filterAssetType.toLowerCase().trim();
 
-      if (
-        filterEmployee &&
-        !(h.emp_name || "").toLowerCase().includes(filterEmployee.toLowerCase())
-      )
-        return false;
+    if (searchEmp && !empName.includes(searchEmp)) return false;
+    if (searchAsset && !assetType.includes(searchAsset)) return false;
+    if (filterIssuedType && h.issued_type !== filterIssuedType) return false;
 
-      if (
-        filterAssetType &&
-        !(h.asset_type || "").toLowerCase().includes(filterAssetType.toLowerCase())
-      )
-        return false;
-
-      if (
-        filterIssuedType &&
-        (h.issued_type || "") !== filterIssuedType
-      )
-        return false;
-
-      return true;
-    });
-  }, [history, filterEmployee, filterAssetType, filterIssuedType]);
+    return true;
+  });
+}, [history, filterEmployee, filterAssetType, filterIssuedType]);
 
   const filteredEmployees = useMemo(() => {
-    const s = employeeSearch.toLowerCase().trim();
-    if (!s) return employees;
+  const s = (employeeSearch || "").toLowerCase().trim();
 
-    return employees.filter((e) => {
-      return (
-        (e.emp_name || "").toLowerCase().includes(s) ||
-        (e.emp_id || "").toLowerCase().includes(s) ||
-        (e.department || "").toLowerCase().includes(s)
+  return (employees || []).filter((e) => {
+    const name = String(e.emp_name || "").toLowerCase().trim();
+    const id = String(e.emp_id || "").toLowerCase().trim();   // ✅ FIX
+    const dept = String(e.department || "").toLowerCase().trim();
+
+    if (!s) return true;
+
+    return (
+      name.includes(s) ||
+      id.includes(s) ||
+      dept.includes(s)
+    );
+  });
+}, [employees, employeeSearch]);
+
+useEffect(() => {
+  if (!showDropdown) return;
+
+  const handleKeyDown = (e) => {
+    if (!Array.isArray(filteredEmployees)) return;
+
+    if (e.key === "ArrowDown") {
+      setHighlightIndex((prev) =>
+        prev < filteredEmployees.length - 1 ? prev + 1 : prev
       );
-    });
-  }, [employees, employeeSearch]);
+    }
+
+    if (e.key === "ArrowUp") {
+      setHighlightIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    }
+
+    if (e.key === "Enter" && highlightIndex >= 0) {
+      const selected = filteredEmployees[highlightIndex];
+      if (selected) {
+        setIssueForm(prev => ({
+          ...prev,
+          employee_id: selected.id,
+        }));
+        setEmployeeSearch(selected.emp_name);
+        setShowDropdown(false);
+      }
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+}, [showDropdown, highlightIndex, filteredEmployees]);
+
+useEffect(() => {
+  if (filteredEmployees.length === 1) {
+    setIssueForm(prev => ({
+      ...prev,
+      employee_id: filteredEmployees[0].id
+    }));
+  }
+}, [filteredEmployees]);
 
   //filtered employees for return rental search
 const filteredReturnEmployees = useMemo(() => {
-  const s = rentalReturnEmployeeSearch.toLowerCase().trim();
-  if (!s) return employees;
+  const s = (rentalReturnEmployeeSearch || "").toLowerCase().trim();
 
-  return employees.filter((e) => {
+  return (employees || []).filter((e) => {
+    const name = String(e.emp_name || "").toLowerCase().trim();
+    const id = String(e.emp_id || "").toLowerCase().trim();
+    const dept = String(e.department || "").toLowerCase().trim();
+
+    if (!s) return true;
+
     return (
-      (e.emp_name || "").toLowerCase().includes(s) ||
-      (e.emp_id || "").toLowerCase().includes(s) ||
-      (e.department || "").toLowerCase().includes(s)
+      name.includes(s) ||
+      id.includes(s) ||
+      dept.includes(s)
     );
   });
 }, [employees, rentalReturnEmployeeSearch]);
+
+useEffect(() => {
+  if (filteredReturnEmployees.length === 1) {
+    setRentalReturnForm(prev => ({
+      ...prev,
+      employee_id: filteredReturnEmployees[0].id
+    }));
+  }
+}, [filteredReturnEmployees]);
 
   const filteredAvailableAssets = useMemo(() => {
     const s = assetSearch.toLowerCase().trim();
@@ -542,8 +596,10 @@ const importRentalsCSV = async (e) => {
 
   return (
     <div className="grid gap-6">
+
+      
       {/* ---------------- main issue return ---------------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* ISSUE */}
         <div className="bg-white rounded-2xl shadow p-6">
           <div className="flex items-center justify-between gap-3 mb-4">
@@ -562,147 +618,171 @@ const importRentalsCSV = async (e) => {
             </button>
           </div>
 
-          <form onSubmit={issueAsset} className="grid gap-3">
-            <Input
-              placeholder="Search Employee (name / id / dept)..."
-              value={employeeSearch}
-              onChange={(e) => setEmployeeSearch(e.target.value)}
-            />
+         <form onSubmit={issueAsset} className="grid gap-3">
 
-            <select
-              className="border rounded-xl p-2 w-full bg-white text-black"
-              value={issueForm.employee_id}
-              onChange={(e) =>
-                setIssueForm({ ...issueForm, employee_id: e.target.value })
-              }
+  {/* 🔥 EMPLOYEE SEARCH DROPDOWN */}
+  <div className="relative">
+
+    <div className="relative">
+      <Input
+        placeholder="Search Employee (name / id / dept)..."
+        value={
+          employeeSearch ||
+          (issueForm.employee_id
+            ? employees.find(e => e.id == issueForm.employee_id)?.emp_name || ""
+            : "")
+        }
+        onFocus={() => setShowDropdown(true)}
+        onChange={(e) => {
+          setEmployeeSearch(e.target.value);
+          setIssueForm(prev => ({ ...prev, employee_id: "" }));
+          setShowDropdown(true);
+          setHighlightIndex(-1);
+        }}
+      />
+
+      {/* 🔽 Dropdown icon */}
+      <span className="absolute right-10 top-2.5 text-gray-400">▾</span>
+
+      {/* ❌ Clear button */}
+      {(employeeSearch || issueForm.employee_id) && (
+        <button
+          type="button"
+          onClick={() => {
+            setEmployeeSearch("");
+            setIssueForm(prev => ({ ...prev, employee_id: "" }));
+            setShowDropdown(false);
+          }}
+          className="absolute right-2 top-1.5 text-gray-400 hover:text-black"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+
+    {/* DROPDOWN */}
+    {showDropdown && (
+      <div className="absolute z-50 w-full bg-white border rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto">
+
+        {filteredEmployees.length === 0 ? (
+          <div className="p-2 text-gray-500 text-sm">No employees found</div>
+        ) : (
+          filteredEmployees.map((e, index) => (
+            <div
+              key={e.id}
+              onClick={() => {
+                setIssueForm(prev => ({
+                  ...prev,
+                  employee_id: e.id,
+                }));
+                setEmployeeSearch(e.emp_name);
+                setShowDropdown(false);
+              }}
+              onMouseEnter={() => setHighlightIndex(index)}
+              className={`p-2 cursor-pointer ${
+                highlightIndex === index ? "bg-blue-100" : ""
+              }`}
             >
-              <option value="">Select Employee</option>
-              {filteredEmployees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.emp_name} ({e.emp_id}) - {e.department}
-                </option>
-              ))}
-            </select>
+              <div className="font-medium">{e.emp_name}</div>
+              <div className="text-xs text-gray-500">
+                {e.emp_id} • {e.department}
+              </div>
+            </div>
+          ))
+        )}
 
-            {/* 🔥 Issued Type Dropdown */}
+      </div>
+    )}
 
-            <select
-              className="border rounded-xl p-2 w-full bg-white text-black"
-              value={issueForm.issued_type}
-              onChange={(e) =>
-                setIssueForm({ ...issueForm, issued_type: e.target.value })
-              }
-            >
-              <option value="">Select Issued Type</option>
-              <option value="By Hand">By Hand</option>
-              <option value="By DTDC Courier">By DTDC Courier</option>
-              <option value="Others">Others</option>
-            </select>
-              
-            {/* COURIER TRACKING FIELD */}
-            {issueForm.issued_type === "By DTDC Courier" && (
-              <Input
-                placeholder="Enter DTDC Tracking Number..."
-                value={issueForm.tracking_number}
-                onChange={(e) =>
-                  setIssueForm({
-                    ...issueForm,
-                    tracking_number: e.target.value,
-                  })
-                }
-              />
-            )}
+  </div>
 
-            {issueForm.issued_type === "Others" && (
-              <Input
-                placeholder="Enter custom issued type..."
-                value={issueForm.other_issue_type}
-                onChange={(e) =>
-                  setIssueForm({
-                    ...issueForm,
-                    other_issue_type: e.target.value,
-                  })
-                }
-              />
-            )}
+  {/* 🔥 Issued Type */}
+  <select
+    className="border rounded-xl p-2 w-full bg-white text-black"
+    value={issueForm.issued_type}
+    onChange={(e) =>
+      setIssueForm({ ...issueForm, issued_type: e.target.value })
+    }
+  >
+    <option value="">Select Issued Type</option>
+    <option value="By Hand">By Hand</option>
+    <option value="By DTDC Courier">By DTDC Courier</option>
+    <option value="Others">Others</option>
+  </select>
 
-            <Input
-              placeholder="Search Available Asset (type / serial / brand)..."
-              value={assetSearch}
-              onChange={(e) => setAssetSearch(e.target.value)}
-            />
+  {/* COURIER */}
+  {issueForm.issued_type === "By DTDC Courier" && (
+    <Input
+      placeholder="Enter DTDC Tracking Number..."
+      value={issueForm.tracking_number}
+      onChange={(e) =>
+        setIssueForm({
+          ...issueForm,
+          tracking_number: e.target.value,
+        })
+      }
+    />
+  )}
 
-            <select
-              className="border rounded-xl p-2 w-full bg-white text-black"
-              value={issueForm.asset_id}
-              onChange={(e) =>
-                setIssueForm({ ...issueForm, asset_id: e.target.value })
-              }
-            >
-              <option value="">Select Available Asset</option>
-              {filteredAvailableAssets.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.asset_type} - {a.serial_number} ({a.brand_model})
-                </option>
-              ))}
-            </select>
+  {/* OTHER TYPE */}
+  {issueForm.issued_type === "Others" && (
+    <Input
+      placeholder="Enter custom issued type..."
+      value={issueForm.other_issue_type}
+      onChange={(e) =>
+        setIssueForm({
+          ...issueForm,
+          other_issue_type: e.target.value,
+        })
+      }
+    />
+  )}
 
-            <Input
-              placeholder="Remarks (optional)"
-              value={issueForm.remarks}
-              onChange={(e) =>
-                setIssueForm({ ...issueForm, remarks: e.target.value })
-              }
-            />
+  {/* 🔍 ASSET SEARCH */}
+  <Input
+    placeholder="Search Available Asset (type / serial / brand)..."
+    value={assetSearch}
+    onChange={(e) => setAssetSearch(e.target.value)}
+  />
 
-            <button className="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold">
-              Issue Now ✅
-            </button>
+  {/* ASSET SELECT */}
+  <select
+    className="border rounded-xl p-2 w-full bg-white text-black"
+    value={issueForm.asset_id}
+    onChange={(e) =>
+      setIssueForm({ ...issueForm, asset_id: e.target.value })
+    }
+  >
+    <option value="">Select Available Asset</option>
+    {filteredAvailableAssets.map((a) => (
+      <option key={a.id} value={a.id}>
+        {a.asset_type} - {a.serial_number} ({a.brand_model})
+      </option>
+    ))}
+  </select>
 
-            <p className="text-xs text-gray-500">
-              Available assets: <b>{availableAssets.length}</b>
-            </p>
-          </form>
+  {/* REMARKS */}
+  <Input
+    placeholder="Remarks (optional)"
+    value={issueForm.remarks}
+    onChange={(e) =>
+      setIssueForm({ ...issueForm, remarks: e.target.value })
+    }
+  />
+
+  {/* SUBMIT */}
+  <button className="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold">
+    Issue Now ✅
+  </button>
+
+  <p className="text-xs text-gray-500">
+    Available assets: <b>{availableAssets.length}</b>
+  </p>
+
+</form>
         </div>
 
-        {/* RETURN */}
-        <div className="bg-white rounded-2xl shadow p-6">
-          <h1 className="text-2xl font-bold mb-1">Return Asset</h1>
-          <p className="text-gray-600 text-sm mb-4">Return issued asset back</p>
-
-          <form onSubmit={returnAsset} className="grid gap-3">
-            <select
-              className="border rounded-xl p-2 w-full bg-white text-black"
-              value={returnForm.assignment_id}
-              onChange={(e) =>
-                setReturnForm({ ...returnForm, assignment_id: e.target.value })
-              }
-            >
-              <option value="">Select Issued Asset</option>
-              {issuedAssignments.map((h) => (
-                <option key={h.assignment_id} value={h.assignment_id}>
-                  {h.emp_name} → {h.asset_type} ({h.serial_number})
-                </option>
-              ))}
-            </select>
-
-            <Input
-              placeholder="Return remarks (optional)"
-              value={returnForm.remarks}
-              onChange={(e) =>
-                setReturnForm({ ...returnForm, remarks: e.target.value })
-              }
-            />
-
-            <button className="bg-green-600 text-white rounded-xl px-4 py-2 font-bold">
-              Return Now ✅
-            </button>
-
-            <p className="text-xs text-gray-500">
-              Currently issued: <b>{issuedAssignments.length}</b>
-            </p>
-          </form>
-        </div>
+        {/* ---------------- main issue return ---------------- */}
       </div>
 
       {/* Issued Assets Table */}

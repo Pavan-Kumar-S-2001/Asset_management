@@ -397,10 +397,16 @@ def return_asset():
         WHERE assignment_id=?
     """, (datetime.now().isoformat(), remarks, assignment_id))
 
-    conn.execute(
-        "UPDATE assets SET status='Available' WHERE id=?",
-        (asset_id,)
+    if asset_id:
+        conn.execute(
+            "UPDATE assets SET status='Available' WHERE id=?",
+            (asset_id,)
     )
+
+    # conn.execute(
+    #     "UPDATE assets SET status='Available' WHERE id=?",
+    #     (asset_id,)
+    # )
 
     conn.commit()
     conn.close()
@@ -675,21 +681,37 @@ def export_issued_assets_csv():
     conn = get_db_connection()
 
     rows = conn.execute("""
-        SELECT h.assignment_id,
-               e.emp_name,
-               e.emp_id,
-               a.asset_type,
-               a.serial_number,
-               h.issued_type,
-               h.issue_date,
-               h.return_date,
-               h.status
-        FROM history h
-        JOIN employees e ON h.employee_id = e.id
-        JOIN assets a ON h.asset_id = a.id
-        WHERE h.status='Issued'
-        ORDER BY h.assignment_id DESC
+        SELECT
+            assignment_id,
+            emp_name,
+            emp_id,
+            asset_type,
+            serial_number,
+            issued_type,
+            issue_date,
+            return_date,
+            status
+        FROM history
+        WHERE status='Issued'
+        ORDER BY assignment_id DESC
     """).fetchall()
+
+    # rows = conn.execute("""
+    #     SELECT h.assignment_id,
+    #            e.emp_name,
+    #            e.emp_id,
+    #            a.asset_type,
+    #            a.serial_number,
+    #            h.issued_type,
+    #            h.issue_date,
+    #            h.return_date,
+    #            h.status
+    #     FROM history h
+    #     JOIN employees e ON h.employee_id = e.id
+    #     JOIN assets a ON h.asset_id = a.id
+    #     WHERE h.status='Issued'
+    #     ORDER BY h.assignment_id DESC
+    # """).fetchall()
 
     conn.close()
 
@@ -794,20 +816,35 @@ def export_history_csv():
     conn = get_db_connection()
 
     rows = conn.execute("""
-        SELECT h.assignment_id,
-               e.emp_name,
-               e.emp_id,
-               a.asset_type,
-               a.serial_number,
-               h.issued_type,
-               h.issue_date,
-               h.return_date,
-               h.status
-        FROM history h
-        JOIN employees e ON h.employee_id = e.id
-        JOIN assets a ON h.asset_id = a.id
-        ORDER BY h.assignment_id DESC
-    """).fetchall()
+    SELECT
+        assignment_id,
+        emp_name,
+        emp_id,
+        asset_type,
+        serial_number,
+        issued_type,
+        issue_date,
+        return_date,
+        status
+    FROM history
+    ORDER BY assignment_id DESC
+""").fetchall()
+
+    # rows = conn.execute("""
+    #     SELECT h.assignment_id,
+    #            e.emp_name,
+    #            e.emp_id,
+    #            a.asset_type,
+    #            a.serial_number,
+    #            h.issued_type,
+    #            h.issue_date,
+    #            h.return_date,
+    #            h.status
+    #     FROM history h
+    #     JOIN employees e ON h.employee_id = e.id
+    #     JOIN assets a ON h.asset_id = a.id
+    #     ORDER BY h.assignment_id DESC
+    # """).fetchall()
 
     conn.close()
 

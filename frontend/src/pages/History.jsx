@@ -66,79 +66,63 @@ export default function History() {
     loadHistory();
   }, []);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return history;
+  // ✅ ADD THIS ABOVE useMemo (IMPORTANT)
 
-    return history.filter((h) => {
-      const editHistory = async (h) => {
-        const remarks = prompt("Enter remarks", h.remarks || "");
-        const issued_type = prompt("Enter issued type", h.issued_type || "");
+const editHistory = async (h) => {
+  const remarks = prompt("Enter remarks", h.remarks || "");
+  const issued_type = prompt("Enter issued type", h.issued_type || "");
 
-        if (remarks === null || issued_type === null) return;
+  if (remarks === null || issued_type === null) return;
 
-        try {
-          await api.put(`/history/${h.assignment_id}`, {
-            remarks: remarks,
-            issued_type: issued_type
-          });
-
-          notifySuccess("History updated successfully ✅");
-          loadHistory(); // reload history
-        } catch (err) {
-          console.error(err);
-          notifyError("Failed to update history ❌");
-        }
-      };
-
-      const deleteHistory = async (id) => {
-        const confirmDelete = window.confirm("Are you sure you want to delete this history record?");
-
-        if (!confirmDelete) return;
-
-        try {
-          await api.delete(`/history/${id}`);
-
-          notifySuccess("History deleted successfully 🗑️");
-          loadHistory(); // reload history
-        } catch (err) {
-          console.error(err);
-          notifyError("Failed to delete history ❌");
-        }
-      };
-      
-      return (
-        (h.type || "").toLowerCase().includes(s) ||
-        (h.emp_name || "").toLowerCase().includes(s) ||
-        (h.emp_id || "").toLowerCase().includes(s) ||
-        (h.department || "").toLowerCase().includes(s) ||
-        (h.asset_type || "").toLowerCase().includes(s) ||
-        (h.brand_model || "").toLowerCase().includes(s) ||
-        (h.serial_number || "").toLowerCase().includes(s) ||
-        (h.status || "").toLowerCase().includes(s)
-      );
-    });
-  }, [history, q]);
-
-  const exportCSV = async () => {
   try {
-    const res = await api.get("/export/issued-assets.csv", {
-      responseType: "blob",
+    await api.put(`/history/${h.assignment_id}`, {
+      remarks: remarks,
+      issued_type: issued_type
     });
 
-    const url = window.URL.createObjectURL(new Blob([res.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "History.csv");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    notifySuccess("History export started ✅");
-  } catch (e) {
-    console.error(e);
-    notifyError("Export failed ❌");
+    notifySuccess("History updated successfully ✅");
+    loadHistory();
+  } catch (err) {
+    console.error(err);
+    notifyError("Failed to update history ❌");
   }
+};
+
+const deleteHistory = async (id) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this history record?");
+  if (!confirmDelete) return;
+
+  try {
+    await api.delete(`/history/${id}`);
+    notifySuccess("History deleted successfully 🗑️");
+    loadHistory();
+  } catch (err) {
+    console.error(err);
+    notifyError("Failed to delete history ❌");
+  }
+};
+
+const filtered = useMemo(() => {
+  const s = q.trim().toLowerCase();
+  if (!s) return history;
+
+  return history.filter((h) => {
+    return (
+      (h.type || "").toLowerCase().includes(s) ||
+      (h.emp_name || "").toLowerCase().includes(s) ||
+      (h.emp_id || "").toLowerCase().includes(s) ||
+      (h.department || "").toLowerCase().includes(s) ||
+      (h.asset_type || "").toLowerCase().includes(s) ||
+      (h.brand_model || "").toLowerCase().includes(s) ||
+      (h.serial_number || "").toLowerCase().includes(s) ||
+      (h.status || "").toLowerCase().includes(s)
+    );
+  });
+}, [history, q]);
+
+  const exportCSV = () => {
+  const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  window.open(`${base}/export/issued-assets.csv`, "_blank");
 };
 
   const statusBadge = (status) => {
