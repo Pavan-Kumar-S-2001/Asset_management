@@ -1,11 +1,11 @@
-from flask_mail import Message
-from .extensions import mail
 from flask import Blueprint, jsonify, request, Response, session
 from functools import wraps
-from .db import get_db_connection
 from datetime import datetime
 from io import StringIO
 import csv
+
+from .db import get_db_connection
+from .services.notifications import build_asset_name, send_asset_assignment_email
 
 main = Blueprint("main", __name__)
 
@@ -313,15 +313,24 @@ def issue_asset():
 
     # get employee details
     employee = conn.execute(
-        "SELECT emp_name, emp_id, department FROM employees WHERE id=?",
+        "SELECT emp_name, emp_id, email, department FROM employees WHERE id=?",
         (employee_id,)
     ).fetchone()
+    if not employee:
+        conn.close()
+        return jsonify({"error": "Employee not found"}), 404
 
     # get asset details
     asset_info = conn.execute(
         "SELECT asset_type, brand_model, serial_number FROM assets WHERE id=?",
         (asset_id,)
     ).fetchone()
+    if not asset_info:
+        conn.close()
+        return jsonify({"error": "Asset details not found"}), 404
+
+    issued_at = datetime.now()
+    issue_date = issued_at.isoformat()
 
     # insert snapshot into history
     conn.execute("""
@@ -349,7 +358,7 @@ def issue_asset():
         asset_info["asset_type"],
         asset_info["brand_model"],
         asset_info["serial_number"],
-        datetime.now().isoformat(),
+        issue_date,
         remarks,
         issued_type
     ))
@@ -361,6 +370,19 @@ def issue_asset():
 
     conn.commit()
     conn.close()
+
+    # Email delivery is non-blocking for the assignment flow by design.
+    send_asset_assignment_email(
+        employee_name=employee["emp_name"],
+        employee_email=employee["email"],
+        asset_name=build_asset_name(
+            asset_info["asset_type"],
+            asset_info["brand_model"],
+        ),
+        asset_identifier=asset_info["serial_number"] or str(asset_id),
+        assigned_date=issued_at.strftime("%Y-%m-%d %H:%M:%S"),
+        assigned_by=(session.get("user") or "admin").title(),
+    )
 
     return jsonify({"message": "Asset issued successfully"})
 
