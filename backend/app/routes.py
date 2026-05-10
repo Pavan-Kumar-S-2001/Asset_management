@@ -372,7 +372,7 @@ def issue_asset():
     conn.close()
 
     # Email delivery is non-blocking for the assignment flow by design.
-    mail_sent = send_asset_assignment_email(
+    mail_result = send_asset_assignment_email(
         employee_name=employee["emp_name"],
         employee_id=employee["emp_id"],
         employee_email=employee["email"],
@@ -391,8 +391,10 @@ def issue_asset():
     return jsonify(
         {
             "message": "Asset issued successfully",
-            "mail_sent": mail_sent,
+            "mail_sent": bool(mail_result.get("sent")),
             "mail_recipient": employee["email"],
+            "mail_error": mail_result.get("error"),
+            "mail_error_code": mail_result.get("error_code"),
         }
     )
 

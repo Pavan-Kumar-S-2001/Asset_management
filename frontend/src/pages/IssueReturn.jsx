@@ -369,7 +369,9 @@ useEffect(() => {
         return;
       }
       notifyInfo(
-        "Asset issued, but the email was not sent. Check the employee email and Outlook mail settings."
+        response.data?.mail_error
+          ? `Asset issued, but email failed: ${response.data.mail_error}`
+          : "Asset issued, but the email was not sent. Check the employee email and Outlook mail settings."
       );
       return;
       /*

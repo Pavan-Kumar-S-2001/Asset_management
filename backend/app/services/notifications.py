@@ -1,5 +1,6 @@
 from flask import current_app
 from flask_mail import Message
+from smtplib import SMTPAuthenticationError
 
 from ..extensions import mail
 
@@ -32,20 +33,33 @@ def send_asset_assignment_email(
 ):
     recipient = _normalize_email(employee_email)
     if not recipient:
-        current_app.logger.warning(
-            "Skipping asset assignment email because employee '%s' has no email address.",
-            employee_name,
+        error_message = (
+            f"Employee '{employee_name}' does not have a registered email address."
         )
-        return False
+        current_app.logger.warning(error_message)
+        return {
+            "sent": False,
+            "error": error_message,
+            "error_code": "missing-recipient",
+        }
 
     mail_username = _normalize_email(current_app.config.get("MAIL_USERNAME"))
     mail_password = current_app.config.get("MAIL_PASSWORD")
     if not mail_username or not mail_password:
-        current_app.logger.warning(
-            "Skipping asset assignment email for '%s' because Outlook SMTP credentials are missing. Set MAIL_USERNAME and MAIL_PASSWORD in the root .env file.",
-            recipient,
+        error_message = (
+            "Outlook SMTP credentials are missing. Set MAIL_USERNAME and "
+            "MAIL_PASSWORD in the root .env file."
         )
-        return False
+        current_app.logger.warning(
+            "Skipping asset assignment email for '%s' because %s",
+            recipient,
+            error_message,
+        )
+        return {
+            "sent": False,
+            "error": error_message,
+            "error_code": "missing-credentials",
+        }
 
     company_name = current_app.config.get("COMPANY_NAME", "DTC INFOTECH PVT LTD")
 
@@ -81,11 +95,34 @@ def send_asset_assignment_email(
             recipient,
             asset_name,
         )
-        return True
+        return {
+            "sent": True,
+            "error": None,
+            "error_code": None,
+        }
+    except SMTPAuthenticationError as exc:
+        error_message = (
+            "Outlook rejected the SMTP login. Check the mailbox password, "
+            "SMTP AUTH permission, and whether the account requires an app password."
+        )
+        current_app.logger.exception(
+            "SMTP authentication failed while sending asset assignment email to %s for asset '%s'.",
+            recipient,
+            asset_name,
+        )
+        return {
+            "sent": False,
+            "error": error_message,
+            "error_code": f"smtp-auth-{exc.smtp_code}",
+        }
     except Exception:
         current_app.logger.exception(
             "Failed to send asset assignment email to %s for asset '%s'.",
             recipient,
             asset_name,
         )
-        return False
+        return {
+            "sent": False,
+            "error": "The app could not send the email because the mail server returned an error.",
+            "error_code": "smtp-send-failed",
+        }
