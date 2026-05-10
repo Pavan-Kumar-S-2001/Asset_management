@@ -363,6 +363,20 @@ useEffect(() => {
       if (response.data?.mail_sent) {
         notifySuccess(
           response.data?.mail_recipient
+            ? `Asset returned and email sent to ${response.data.mail_recipient}`
+            : "Asset returned and email sent successfully"
+        );
+        return;
+      }
+      notifyInfo(
+        response.data?.mail_error
+          ? `Asset returned, but email failed: ${response.data.mail_error}`
+          : "Asset returned, but the email was not sent."
+      );
+      return;
+      if (response.data?.mail_sent) {
+        notifySuccess(
+          response.data?.mail_recipient
             ? `Asset issued and email sent to ${response.data.mail_recipient}`
             : "Asset issued and email sent successfully"
         );
@@ -400,13 +414,27 @@ useEffect(() => {
     if (!ok) return;
 
     try {
-      await api.post("/return", {
+      const response = await api.post("/return", {
         assignment_id: Number(returnForm.assignment_id),
         remarks: returnForm.remarks,
       });
 
       setReturnForm({ assignment_id: "", remarks: "" });
       await loadAll();
+      if (response.data?.mail_sent) {
+        notifySuccess(
+          response.data?.mail_recipient
+            ? `Asset returned and email sent to ${response.data.mail_recipient}`
+            : "Asset returned and email sent successfully"
+        );
+        return;
+      }
+      notifyInfo(
+        response.data?.mail_error
+          ? `Asset returned, but email failed: ${response.data.mail_error}`
+          : "Asset returned, but the email was not sent."
+      );
+      return;
       notifySuccess("Asset returned ✅");
     } catch (e2) {
       console.error(e2);
@@ -426,13 +454,27 @@ useEffect(() => {
     if (!ok) return;
 
     try {
-      await api.post("/return", {
+      const response = await api.post("/return", {
         assignment_id: Number(assignment_id),
         remarks: "Returned via quick return",
       });
 
       notifySuccess("Asset returned ✅");
       await loadAll();
+      if (response.data?.mail_sent) {
+        notifySuccess(
+          response.data?.mail_recipient
+            ? `Asset returned and email sent to ${response.data.mail_recipient}`
+            : "Asset returned and email sent successfully"
+        );
+        return;
+      }
+      notifyInfo(
+        response.data?.mail_error
+          ? `Asset returned, but email failed: ${response.data.mail_error}`
+          : "Asset returned, but the email was not sent."
+      );
+      return;
     } catch (e) {
       console.error(e);
       notifyError("Quick return failed ❌");

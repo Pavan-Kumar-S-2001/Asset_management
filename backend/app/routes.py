@@ -5,7 +5,11 @@ from io import StringIO
 import csv
 
 from .db import get_db_connection
-from .services.notifications import build_asset_name, send_asset_assignment_email
+from .services.notifications import (
+    build_asset_name,
+    send_asset_assignment_email,
+    send_asset_return_email,
+)
 
 main = Blueprint("main", __name__)
 
@@ -370,7 +374,6 @@ def issue_asset():
 
     conn.commit()
     conn.close()
-
     # Email delivery is non-blocking for the assignment flow by design.
     mail_result = send_asset_assignment_email(
         employee_name=employee["emp_name"],
@@ -414,7 +417,21 @@ def return_asset():
     conn = get_db_connection()
 
     row = conn.execute(
-        "SELECT asset_id, employee_id FROM history WHERE assignment_id=?",
+        """
+        SELECT
+            h.asset_id,
+            h.employee_id,
+            h.emp_name,
+            h.emp_id,
+            h.department,
+            h.asset_type,
+            h.brand_model,
+            h.serial_number,
+            e.email
+        FROM history h
+        LEFT JOIN employees e ON e.id = h.employee_id
+        WHERE h.assignment_id=?
+        """,
         (assignment_id,)
     ).fetchone()
 
@@ -423,13 +440,13 @@ def return_asset():
         return jsonify({"error": "Invalid assignment"}), 400
 
     asset_id = row["asset_id"]
-    employee_id = row["employee_id"]
+    returned_at = datetime.now()
 
     conn.execute("""
         UPDATE history
         SET return_date=?, status='Returned', remarks=?
         WHERE assignment_id=?
-    """, (datetime.now().isoformat(), remarks, assignment_id))
+    """, (returned_at.isoformat(), remarks, assignment_id))
 
     if asset_id:
         conn.execute(
@@ -444,6 +461,31 @@ def return_asset():
 
     conn.commit()
     conn.close()
+    mail_result = send_asset_return_email(
+        employee_name=row["emp_name"],
+        employee_id=row["emp_id"],
+        employee_email=row["email"],
+        employee_department=row["department"],
+        asset_name=build_asset_name(
+            row["asset_type"],
+            row["brand_model"],
+        ),
+        asset_type=row["asset_type"],
+        asset_configuration=row["brand_model"],
+        asset_serial_number=row["serial_number"] or str(asset_id),
+        return_date=returned_at.strftime("%Y-%m-%d %H:%M:%S"),
+        condition_status="Clean and Neat Condition",
+    )
+
+    return jsonify(
+        {
+            "message": "Asset returned successfully",
+            "mail_sent": bool(mail_result.get("sent")),
+            "mail_recipient": row["email"],
+            "mail_error": mail_result.get("error"),
+            "mail_error_code": mail_result.get("error_code"),
+        }
+    )
     return jsonify({"message": "Asset returned ✅"})
 
 # ================= HISTORY =================

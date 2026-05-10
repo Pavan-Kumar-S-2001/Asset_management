@@ -27,6 +27,11 @@ def _get_bool_env(name, default=False):
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _get_csv_env(name, default=""):
+    value = os.getenv(name, default)
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def create_app():
     load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
@@ -45,6 +50,10 @@ def create_app():
 
     mail_username = os.getenv("MAIL_USERNAME", "").strip()
     admin_email = os.getenv("ADMIN_EMAIL", "").strip() or mail_username
+    notification_cc = _get_csv_env(
+        "NOTIFICATION_CC",
+        "hr@dtcinfotech.com,shan@dtcinfotech.com",
+    )
     app.config.update(
         MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.office365.com"),
         MAIL_PORT=int(os.getenv("MAIL_PORT", "587")),
@@ -54,6 +63,7 @@ def create_app():
         MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", ""),
         MAIL_DEFAULT_SENDER=mail_username or None,
         ADMIN_EMAIL=admin_email,
+        NOTIFICATION_CC=notification_cc,
         COMPANY_NAME=os.getenv("COMPANY_NAME", "DTC INFOTECH PVT LTD").strip()
         or "DTC INFOTECH PVT LTD",
         SESSION_TYPE="filesystem",
