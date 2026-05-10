@@ -372,19 +372,29 @@ def issue_asset():
     conn.close()
 
     # Email delivery is non-blocking for the assignment flow by design.
-    send_asset_assignment_email(
+    mail_sent = send_asset_assignment_email(
         employee_name=employee["emp_name"],
+        employee_id=employee["emp_id"],
         employee_email=employee["email"],
+        employee_department=employee["department"],
         asset_name=build_asset_name(
             asset_info["asset_type"],
             asset_info["brand_model"],
         ),
-        asset_identifier=asset_info["serial_number"] or str(asset_id),
+        asset_type=asset_info["asset_type"],
+        asset_configuration=asset_info["brand_model"],
+        asset_serial_number=asset_info["serial_number"] or str(asset_id),
         assigned_date=issued_at.strftime("%Y-%m-%d %H:%M:%S"),
         assigned_by=(session.get("user") or "admin").title(),
     )
 
-    return jsonify({"message": "Asset issued successfully"})
+    return jsonify(
+        {
+            "message": "Asset issued successfully",
+            "mail_sent": mail_sent,
+            "mail_recipient": employee["email"],
+        }
+    )
 
 # ================= RETURN ASSET =================
 

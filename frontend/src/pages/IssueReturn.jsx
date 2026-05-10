@@ -151,6 +151,21 @@ useEffect(() => {
     [assets]
   );
 
+  const selectedEmployee = useMemo(
+    () =>
+      employees.find(
+        (employee) => String(employee.id) === String(issueForm.employee_id)
+      ) || null,
+    [employees, issueForm.employee_id]
+  );
+
+  const selectedAsset = useMemo(
+    () =>
+      assets.find((asset) => String(asset.id) === String(issueForm.asset_id)) ||
+      null,
+    [assets, issueForm.asset_id]
+  );
+
   const issuedAssignments = useMemo(() => {
   return history.filter((h) => {
     const empName = (h.emp_name || "").toLowerCase().trim();
@@ -314,8 +329,10 @@ useEffect(() => {
 
     const ok = await confirmPopup({
       title: "Issued Asset?",
-      text: "Are you sure you want to issue this asset?",
-      confirmButtonText: "Yes, Issue",
+      text: selectedEmployee?.email
+        ? `Assign this asset and send the mail to ${selectedEmployee.email}?`
+        : "Assign this asset now? The employee email is not available.",
+      confirmButtonText: "Yes, Send Mail",
       cancelButtonText: "Cancel",
       icon: "question",
     });
@@ -323,7 +340,7 @@ useEffect(() => {
 
     try {
 
-      await api.post("/issue", {
+      const response = await api.post("/issue", {
         employee_id: Number(issueForm.employee_id),
         asset_id: Number(issueForm.asset_id),
         remarks: issueForm.remarks,
@@ -343,7 +360,21 @@ useEffect(() => {
         tracking_number: "",
       });
       await loadAll();
+      if (response.data?.mail_sent) {
+        notifySuccess(
+          response.data?.mail_recipient
+            ? `Asset issued and email sent to ${response.data.mail_recipient}`
+            : "Asset issued and email sent successfully"
+        );
+        return;
+      }
+      notifyInfo(
+        "Asset issued, but the email was not sent. Check the employee email and Outlook mail settings."
+      );
+      return;
+      /*
       notifySuccess("Asset issued ✅");
+      */
     } catch (e2) {
       console.error(e2);
       notifyError("Issue failed ❌");
@@ -696,6 +727,13 @@ const importRentalsCSV = async (e) => {
 
   </div>
 
+  {selectedEmployee && (
+    <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+      Mail will be sent to <b>{selectedEmployee.email || "No registered email"}</b>
+      {" "}for {selectedEmployee.emp_name}.
+    </div>
+  )}
+
   {/* 🔥 Issued Type */}
   <select
     className="border rounded-xl p-2 w-full bg-white text-black"
@@ -761,6 +799,14 @@ const importRentalsCSV = async (e) => {
     ))}
   </select>
 
+  {selectedAsset && (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+      Selected asset: <b>{selectedAsset.asset_type}</b> | Configuration:{" "}
+      <b>{selectedAsset.brand_model || "-"}</b> | Serial:{" "}
+      <b>{selectedAsset.serial_number || "-"}</b>
+    </div>
+  )}
+
   {/* REMARKS */}
   <Input
     placeholder="Remarks (optional)"
@@ -772,7 +818,10 @@ const importRentalsCSV = async (e) => {
 
   {/* SUBMIT */}
   <button className="bg-blue-600 text-white rounded-xl px-4 py-2 font-bold">
+    <span>Send Mail &amp; Issue Asset</span>
+    {/*
     Issue Now ✅
+    */}
   </button>
 
   <p className="text-xs text-gray-500">

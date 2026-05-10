@@ -20,9 +20,13 @@ def build_asset_name(asset_type, brand_model):
 def send_asset_assignment_email(
     *,
     employee_name,
+    employee_id,
     employee_email,
+    employee_department,
     asset_name,
-    asset_identifier,
+    asset_type,
+    asset_configuration,
+    asset_serial_number,
     assigned_date,
     assigned_by,
 ):
@@ -38,30 +42,31 @@ def send_asset_assignment_email(
     mail_password = current_app.config.get("MAIL_PASSWORD")
     if not mail_username or not mail_password:
         current_app.logger.warning(
-            "Skipping asset assignment email for '%s' because Outlook SMTP credentials are missing.",
+            "Skipping asset assignment email for '%s' because Outlook SMTP credentials are missing. Set MAIL_USERNAME and MAIL_PASSWORD in the root .env file.",
             recipient,
         )
         return False
 
-    admin_email = _normalize_email(current_app.config.get("ADMIN_EMAIL"))
     company_name = current_app.config.get("COMPANY_NAME", "DTC INFOTECH PVT LTD")
-    cc_list = []
-    if admin_email and admin_email.lower() != recipient.lower():
-        cc_list.append(admin_email)
 
     message = Message(
         subject="New Asset Assigned",
         recipients=[recipient],
-        cc=cc_list,
         sender=current_app.config.get("MAIL_DEFAULT_SENDER") or mail_username,
     )
     message.body = (
         f"Hello {employee_name},\n\n"
         "A new asset has been assigned to you.\n\n"
-        "Asset Details:\n"
+        "Employee Details:\n"
         f"- Employee Name: {employee_name}\n"
+        f"- Employee ID: {employee_id or '-'}\n"
+        f"- Department: {employee_department or '-'}\n"
+        f"- Registered Email: {recipient}\n\n"
+        "Asset Details:\n"
+        f"- Asset Type: {asset_type or '-'}\n"
+        f"- Asset Configuration: {asset_configuration or '-'}\n"
         f"- Asset Name: {asset_name}\n"
-        f"- Asset ID: {asset_identifier}\n"
+        f"- Serial Number: {asset_serial_number or '-'}\n"
         f"- Assigned Date: {assigned_date}\n"
         f"- Assigned By: {assigned_by}\n"
         f"- Company Name: {company_name}\n\n"

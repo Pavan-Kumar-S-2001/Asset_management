@@ -44,6 +44,7 @@ def create_app():
     app.secret_key = os.getenv("SECRET_KEY", "change-this-to-a-strong-secret")
 
     mail_username = os.getenv("MAIL_USERNAME", "").strip()
+    admin_email = os.getenv("ADMIN_EMAIL", "").strip() or mail_username
     app.config.update(
         MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.office365.com"),
         MAIL_PORT=int(os.getenv("MAIL_PORT", "587")),
@@ -52,7 +53,7 @@ def create_app():
         MAIL_USERNAME=mail_username,
         MAIL_PASSWORD=os.getenv("MAIL_PASSWORD", ""),
         MAIL_DEFAULT_SENDER=mail_username or None,
-        ADMIN_EMAIL=os.getenv("ADMIN_EMAIL", "").strip(),
+        ADMIN_EMAIL=admin_email,
         COMPANY_NAME=os.getenv("COMPANY_NAME", "DTC INFOTECH PVT LTD").strip()
         or "DTC INFOTECH PVT LTD",
         SESSION_TYPE="filesystem",
