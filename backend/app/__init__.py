@@ -52,7 +52,7 @@ def create_app():
     admin_email = os.getenv("ADMIN_EMAIL", "").strip() or mail_username
     notification_cc = _get_csv_env(
         "NOTIFICATION_CC",
-        "hr@dtcinfotech.com,shan@dtcinfotech.com",
+        "lavan8803@gmail.com",
     )
     app.config.update(
         MAIL_SERVER=os.getenv("MAIL_SERVER", "smtp.office365.com"),
