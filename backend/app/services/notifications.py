@@ -54,12 +54,14 @@ def _send_asset_email(*, recipient, subject, body, log_action, asset_name):
             "Outlook SMTP credentials are missing. Set MAIL_USERNAME and "
             "MAIL_PASSWORD in the root .env file."
         )
+
         current_app.logger.warning(
             "Skipping asset %s email for '%s' because %s",
             log_action,
             recipient,
             error_message,
         )
+
         return _mail_result(
             sent=False,
             error=error_message,
@@ -72,7 +74,11 @@ def _send_asset_email(*, recipient, subject, body, log_action, asset_name):
         cc=_get_notification_cc_list(recipient),
         sender=current_app.config.get("MAIL_DEFAULT_SENDER") or mail_username,
     )
-    message.body = body
+
+    if body.strip().startswith("<!DOCTYPE html>"):
+        message.html = body
+    else:
+        message.body = body
 
     try:
         mail.send(message)
@@ -141,27 +147,190 @@ def send_asset_assignment_email(
         )
 
     company_name = current_app.config.get("COMPANY_NAME", "DTC INFOTECH PVT LTD")
-    body = (
-        f"Hello {employee_name},\n\n"
-        "A new asset has been assigned to you.\n\n"
-        "Employee Details:\n"
-        f"- Employee Name: {employee_name}\n"
-        f"- Employee ID: {employee_id or '-'}\n"
-        f"- Department: {employee_department or '-'}\n"
-        f"- Registered Email: {recipient}\n\n"
-        "Asset Details:\n"
-        f"- Asset Type: {asset_type or '-'}\n"
-        f"- Asset Configuration: {asset_configuration or '-'}\n"
-        f"- Asset Name: {asset_name}\n"
-        f"- Serial Number: {asset_serial_number or '-'}\n"
-        f"- Issue Type: {issued_type or '-'}\n"
-        f"- Tracking Number: {tracking_number or '-'}\n"
-        f"- Assigned Date: {assigned_date}\n"
-        f"- Assigned By: {assigned_by}\n"
-        f"- Company Name: {company_name}\n\n"
-        "Please contact admin if you have any questions.\n\n"
-        f"Regards,\n{company_name}\n"
-    )
+    body = f"""
+        
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+</head>
+
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0"
+style="background:#f4f6f9;padding:30px 0;">
+
+<tr>
+<td align="center">
+
+<table width="700" cellpadding="0" cellspacing="0"
+style="background:#ffffff;border-radius:12px;
+overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+
+<tr>
+<td style="background:#0b5ed7;padding:30px;text-align:center;">
+
+<h1 style="color:white;margin:0;font-size:28px;">
+DTC INFOTECH PVT LTD
+</h1>
+
+<p style="color:#dbe7ff;margin-top:10px;font-size:15px;">
+IT Asset Management System
+</p>
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:35px 40px;">
+
+<h2 style="margin:0;color:#222;">
+New Asset Assigned
+</h2>
+
+<p style="font-size:15px;color:#555;line-height:25px;">
+Hello <b>{employee_name}</b>,
+<br><br>
+
+A company asset has been successfully assigned to you.
+Please find the details below.
+</p>
+
+<h3 style="color:#0b5ed7;margin-top:30px;">
+Employee Details
+</h3>
+
+<table width="100%" cellpadding="10"
+style="border-collapse:collapse;font-size:14px;">
+
+<tr style="background:#f8f9fb;">
+<td width="35%"><b>Employee Name</b></td>
+<td>{employee_name}</td>
+</tr>
+
+<tr>
+<td><b>Employee ID</b></td>
+<td>{employee_id or '-'}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Department</b></td>
+<td>{employee_department or '-'}</td>
+</tr>
+
+<tr>
+<td><b>Email</b></td>
+<td>{recipient}</td>
+</tr>
+
+</table>
+
+<h3 style="color:#0b5ed7;margin-top:30px;">
+Asset Details
+</h3>
+
+<table width="100%" cellpadding="10"
+style="border-collapse:collapse;font-size:14px;">
+
+<tr style="background:#f8f9fb;">
+<td width="35%"><b>Asset Type</b></td>
+<td>{asset_type or '-'}</td>
+</tr>
+
+<tr>
+<td><b>Asset Name</b></td>
+<td>{asset_name}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Configuration</b></td>
+<td>{asset_configuration or '-'}</td>
+</tr>
+
+<tr>
+<td><b>Serial Number</b></td>
+<td>{asset_serial_number or '-'}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Issue Type</b></td>
+<td>{issued_type or '-'}</td>
+</tr>
+
+<tr>
+<td><b>Tracking Number</b></td>
+<td>{tracking_number or '-'}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Assigned Date</b></td>
+<td>{assigned_date}</td>
+</tr>
+
+<tr>
+<td><b>Assigned By</b></td>
+<td>{assigned_by}</td>
+</tr>
+
+</table>
+
+<div style="
+margin-top:30px;
+background:#f1f7ff;
+padding:20px;
+border-left:4px solid #0b5ed7;
+border-radius:8px;
+font-size:14px;
+line-height:24px;
+color:#444;">
+
+<b>Important Notes:</b>
+
+<ul style="padding-left:18px;">
+<li>Please keep the asset secure.</li>
+<li>Report any issue immediately to IT department.</li>
+<li>Return the asset upon company request.</li>
+</ul>
+
+</div>
+
+<hr style="margin:35px 0;border:none;border-top:1px solid #e5e7eb;">
+
+<p style="margin:0;font-size:15px;color:#333;">
+Regards,<br>
+<b>S Pavan Kumar</b><br>
+IT ADMIN
+</p>
+
+<p style="font-size:13px;color:#555;line-height:24px;">
+
+<b>DTC Infotech Pvt. Ltd.</b><br>
+
+AI/ML | Data | Cloud | Application Modernisation |
+Microsoft Dynamics
+
+<br><br>
+
+📞 +91 6360554225<br>
+📧 IT@dtcinfotech.com<br>
+🌐 https://dtcinfotech.com
+
+</p>
+
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+
+</table>
+
+</body>
+</html>
+
+"""
 
     return _send_asset_email(
         recipient=recipient,
@@ -201,28 +370,188 @@ def send_asset_return_email(
         )
 
     company_name = current_app.config.get("COMPANY_NAME", "DTC INFOTECH PVT LTD")
-    body = (
-        f"Hello {employee_name},\n\n"
-        "This email confirms that the assigned asset has been returned successfully.\n\n"
-        "Employee Details:\n"
-        f"- Employee Name: {employee_name}\n"
-        f"- Employee ID: {employee_id or '-'}\n"
-        f"- Department: {employee_department or '-'}\n"
-        f"- Registered Email: {recipient}\n\n"
-        "Returned Asset Details:\n"
-        f"- Asset Name: {asset_name}\n"
-        f"- Asset Type: {asset_type or '-'}\n"
-        f"- Asset Configuration: {asset_configuration or '-'}\n"
-        f"- Serial Number: {asset_serial_number or '-'}\n"
-        f"- Issue Date: {issue_date or '-'}\n"
-        f"- Return Date: {return_date}\n"
-        f"- Issue Type: {issued_type or '-'}\n"
-        f"- Tracking Number: {tracking_number or '-'}\n"
-        f"- Asset Condition Status: {condition_status}\n\n"
-        "Thank you for returning the asset in clean and neat condition.\n\n"
-        f"Regards,\n{company_name}\n"
-    )
+    body = f"""
 
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+</head>
+
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0"
+style="background:#f4f6f9;padding:30px 0;">
+
+<tr>
+<td align="center">
+
+<table width="700" cellpadding="0" cellspacing="0"
+style="background:#ffffff;border-radius:12px;
+overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+
+<tr>
+<td style="background:#198754;padding:30px;text-align:center;">
+
+<h1 style="color:white;margin:0;font-size:28px;">
+DTC INFOTECH PVT LTD
+</h1>
+
+<p style="color:#d8ffe7;margin-top:10px;font-size:15px;">
+IT Asset Management System
+</p>
+
+</td>
+</tr>
+
+<tr>
+<td style="padding:35px 40px;">
+
+<h2 style="margin:0;color:#222;">
+Asset Return Confirmation
+</h2>
+
+<p style="font-size:15px;color:#555;line-height:25px;">
+Hello <b>{employee_name}</b>,
+<br><br>
+
+This email confirms that your assigned company asset has been returned successfully.
+</p>
+
+<h3 style="color:#198754;margin-top:30px;">
+Employee Details
+</h3>
+
+<table width="100%" cellpadding="10"
+style="border-collapse:collapse;font-size:14px;">
+
+<tr style="background:#f8f9fb;">
+<td width="35%"><b>Employee Name</b></td>
+<td>{employee_name}</td>
+</tr>
+
+<tr>
+<td><b>Employee ID</b></td>
+<td>{employee_id or '-'}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Department</b></td>
+<td>{employee_department or '-'}</td>
+</tr>
+
+<tr>
+<td><b>Email</b></td>
+<td>{recipient}</td>
+</tr>
+
+</table>
+
+<h3 style="color:#198754;margin-top:30px;">
+Returned Asset Details
+</h3>
+
+<table width="100%" cellpadding="10"
+style="border-collapse:collapse;font-size:14px;">
+
+<tr style="background:#f8f9fb;">
+<td width="35%"><b>Asset Name</b></td>
+<td>{asset_name}</td>
+</tr>
+
+<tr>
+<td><b>Asset Type</b></td>
+<td>{asset_type or '-'}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Configuration</b></td>
+<td>{asset_configuration or '-'}</td>
+</tr>
+
+<tr>
+<td><b>Serial Number</b></td>
+<td>{asset_serial_number or '-'}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Issue Date</b></td>
+<td>{issue_date or '-'}</td>
+</tr>
+
+<tr>
+<td><b>Return Date</b></td>
+<td>{return_date}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Issue Type</b></td>
+<td>{issued_type or '-'}</td>
+</tr>
+
+<tr>
+<td><b>Tracking Number</b></td>
+<td>{tracking_number or '-'}</td>
+</tr>
+
+<tr style="background:#f8f9fb;">
+<td><b>Asset Condition</b></td>
+<td>{condition_status}</td>
+</tr>
+
+</table>
+
+<div style="
+margin-top:30px;
+background:#eefbf3;
+padding:20px;
+border-left:4px solid #198754;
+border-radius:8px;
+font-size:14px;
+line-height:24px;
+color:#444;">
+
+Thank you for returning the asset in good condition.
+
+</div>
+
+<hr style="margin:35px 0;border:none;border-top:1px solid #e5e7eb;">
+
+<p style="margin:0;font-size:15px;color:#333;">
+Regards,<br>
+<b>S Pavan Kumar</b><br>
+IT ADMIN
+</p>
+
+<p style="font-size:13px;color:#555;line-height:24px;">
+
+<b>DTC Infotech Pvt. Ltd.</b><br>
+
+AI/ML | Data | Cloud | Application Modernisation |
+Microsoft Dynamics
+
+<br><br>
+
+📞 +91 6360554225<br>
+📧 IT@dtcinfotech.com<br>
+🌐 https://dtcinfotech.com
+
+</p>
+
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+
+</table>
+
+</body>
+</html>
+
+"""
     return _send_asset_email(
         recipient=recipient,
         subject="Asset Return Confirmation",
