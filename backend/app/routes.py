@@ -132,7 +132,7 @@ def _issue_company_asset(conn, *, employee_id, asset_id, remarks, issued_type, t
 
     asset = conn.execute(
         """
-        SELECT id, asset_type, brand_model, serial_number, status
+        SELECT id, asset_type, brand_model, serial_number, configuration, status
         FROM assets
         WHERE id=?
         """,
@@ -166,7 +166,10 @@ def _issue_company_asset(conn, *, employee_id, asset_id, remarks, issued_type, t
         "asset_type": asset["asset_type"],
         "brand_model": asset["brand_model"],
         "asset_name": build_asset_name(asset["asset_type"], asset["brand_model"]),
-        "asset_configuration": asset["brand_model"],
+        "asset_configuration": (
+    asset["configuration"]
+    or asset["brand_model"]
+),
         "serial_number": asset["serial_number"],
         "issued_at": issued_at,
         "issued_type": issued_type,
@@ -290,9 +293,11 @@ def _get_assignment_with_mail_context(conn, assignment_id):
             COALESCE(e.email, h.employee_email) AS effective_email,
             r.laptop_name AS rental_name,
             r.configuration AS rental_configuration
+            a.configuration AS asset_configuration,
         FROM history h
         LEFT JOIN employees e ON e.id = h.employee_id
         LEFT JOIN rentals r ON r.id = h.rental_id
+        LEFT JOIN assets a ON a.id = h.asset_id
         WHERE h.assignment_id=?
         """,
         (assignment_id,),
@@ -354,7 +359,10 @@ def _return_assignment(conn, *, assignment_id, remarks):
             assignment["asset_type"],
             assignment["brand_model"],
         )
-        asset_configuration = assignment["brand_model"]
+        asset_configuration = (
+    assignment["asset_configuration"]
+    or assignment["brand_model"]
+)
 
     return {
         "assignment": assignment,
@@ -614,15 +622,16 @@ def add_asset():
     conn.execute(
         """
         INSERT INTO assets
-        (asset_type, brand_model, serial_number, condition, status)
+        (asset_type, brand_model, serial_number, configuration, condition, status)
         VALUES (?, ?, ?, ?, 'Available')
         """,
         (
-            data.get("asset_type"),
-            data.get("brand_model"),
-            data.get("serial_number"),
-            data.get("condition"),
-        ),
+    data.get("asset_type"),
+    data.get("brand_model"),
+    data.get("serial_number"),
+    data.get("configuration"),
+    data.get("condition"),
+),
     )
     conn.commit()
     conn.close()
@@ -639,17 +648,18 @@ def update_asset(asset_id):
     conn.execute(
         """
         UPDATE assets
-        SET asset_type=?, brand_model=?, serial_number=?, condition=?, status=?
+        SET asset_type=?, brand_model=?, serial_number=?, configuration=?, condition=?, status=?
         WHERE id=?
         """,
         (
-            data.get("asset_type"),
-            data.get("brand_model"),
-            data.get("serial_number"),
-            data.get("condition"),
-            data.get("status"),
-            asset_id,
-        ),
+    data.get("asset_type"),
+    data.get("brand_model"),
+    data.get("serial_number"),
+    data.get("configuration"),
+    data.get("condition"),
+    data.get("status"),
+    asset_id,
+),
     )
     conn.commit()
     conn.close()
@@ -1409,7 +1419,7 @@ def export_assets_csv():
     conn = get_db_connection()
     rows = conn.execute(
         """
-        SELECT asset_type, brand_model, serial_number, condition, status
+        SELECT asset_type, brand_model, serial_number, configuration, condition, status
         FROM assets
         ORDER BY id DESC
         """
@@ -1418,13 +1428,21 @@ def export_assets_csv():
 
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Asset Type", "Brand Model", "Serial Number", "Condition", "Status"])
+    writer.writerow([
+    "Asset Type",
+    "Brand Model",
+    "Configuration",
+    "Serial Number",
+    "Condition",
+    "Status"
+])
 
     for row in rows:
         writer.writerow(
             [
                 row["asset_type"],
                 row["brand_model"],
+                row["configuration"],
                 row["serial_number"],
                 row["condition"],
                 row["status"],

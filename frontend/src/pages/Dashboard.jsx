@@ -24,13 +24,73 @@ export default function Dashboard() {
     loadAll();
   }, []);
 
-  const stats = useMemo(() => {
-    const totalEmployees = employees.length;
-    const totalAssets = assets.length;
-    const availableAssets = assets.filter((a) => a.status === "Available").length;
-    const issuedAssets = assets.filter((a) => a.status === "Issued").length;
-    return { totalEmployees, totalAssets, availableAssets, issuedAssets };
-  }, [employees, assets]);
+ const stats = useMemo(() => {
+
+  const totalEmployees = employees.length;
+
+  const ownAssets = assets.length;
+
+  const availableAssets = assets.filter(
+    (a) => a.status === "Available"
+  ).length;
+
+  const issuedAssets = assets.filter(
+    (a) => a.status === "Issued"
+  ).length;
+
+  const rentalAssets = history.filter(
+    (h) => h.asset_source === "rental"
+  ).length;
+
+  const cameraAssets = assets.filter(
+    (a) =>
+      a.asset_type?.toLowerCase().includes("camera")
+  );
+
+  const hardDiskAssets = assets.filter(
+    (a) =>
+      a.asset_type?.toLowerCase().includes("hard")
+  );
+
+  const nvrAssets = assets.filter(
+    (a) =>
+      a.asset_type?.toLowerCase().includes("nvr")
+  );
+
+  const pendriveAssets = assets.filter(
+    (a) =>
+      a.asset_type?.toLowerCase().includes("pendrive")
+  );
+
+  return {
+    totalEmployees,
+    ownAssets,
+    availableAssets,
+    issuedAssets,
+    rentalAssets,
+
+    cameraTotal: cameraAssets.length,
+    cameraAvailable: cameraAssets.filter(
+      (a) => a.status === "Available"
+    ).length,
+
+    hardDiskTotal: hardDiskAssets.length,
+    hardDiskAvailable: hardDiskAssets.filter(
+      (a) => a.status === "Available"
+    ).length,
+
+    nvrTotal: nvrAssets.length,
+    nvrAvailable: nvrAssets.filter(
+      (a) => a.status === "Available"
+    ).length,
+
+    pendriveTotal: pendriveAssets.length,
+    pendriveAvailable: pendriveAssets.filter(
+      (a) => a.status === "Available"
+    ).length,
+  };
+
+}, [employees, assets, history]);
 
   return (
     <div className="space-y-6">
@@ -51,39 +111,50 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard
-          title="Employees"
-          value={stats.totalEmployees}
-          icon="👤"
-          onClick={() => navigate("/employees")} // ✅ added
-        />
-        <StatCard
-          title="Assets"
-          value={stats.totalAssets}
-          icon="💻"
-          onClick={() => navigate("/assets")} // ✅ added
-        />
-        <StatCard
-          title="Available"
-          value={stats.availableAssets}
-          icon="✅"
-          onClick={() => navigate("/assets?status=Available")} // ✅ added
-        />
-        <StatCard
-          title="Issued"
-          value={stats.issuedAssets}
-          icon="📌"
-          onClick={() => navigate("/assets?status=Issued")} // ✅ added
-        />
-      </div>
-        <StatCard
-          title="History Logs"
-          value={history.length}
-          icon="📜"
-          onClick={() => navigate("/history")}
-        />
+      {/* MAIN DASHBOARD CARDS */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
+
+  <StatCard
+    title="Employees"
+    value={stats.totalEmployees}
+    sub="Total Employees"
+    icon="👤"
+    onClick={() => navigate("/employees")}
+  />
+
+  <StatCard
+    title="Own Assets"
+    value={stats.ownAssets}
+    sub="Company Assets"
+    icon="💻"
+    onClick={() => navigate("/assets")}
+  />
+
+  <StatCard
+    title="Rental Assets"
+    value={stats.rentalAssets}
+    sub="Rental Asset Count"
+    icon="🏢"
+    onClick={() => navigate("/issue-return")}
+  />
+
+  <StatCard
+    title="Available Assets"
+    value={stats.availableAssets}
+    sub="Ready to Issue"
+    icon="✅"
+    onClick={() => navigate("/assets")}
+  />
+
+  <StatCard
+    title="Issued Assets"
+    value={stats.issuedAssets}
+    sub="Currently Assigned"
+    icon="📌"
+    onClick={() => navigate("/issue-return")}
+  />
+
+</div>
 
       {/* Recent history */}
       <div className="bg-white rounded-2xl shadow p-6">
@@ -139,7 +210,13 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon, onClick }) {
+function StatCard({
+  title,
+  value,
+  sub,
+  icon,
+  onClick,
+}) {
   return (
     <div
       onClick={onClick} // ✅ added
@@ -147,11 +224,53 @@ function StatCard({ title, value, icon, onClick }) {
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-gray-500 text-sm">{title}</p>
+          <p className="text-gray-500 text-sm font-semibold">
+  {title}
+</p>
           <p className="text-4xl font-extrabold mt-1 text-black">{value}</p>
+          <p className="text-sm text-gray-500 mt-2">
+  {sub}
+</p>
         </div>
         <div className="text-3xl">{icon}</div>
       </div>
+    </div>
+  );
+}
+
+function CategoryCard({
+  title,
+  total,
+  available,
+  icon,
+}) {
+  return (
+    <div className="bg-white rounded-2xl shadow p-5 hover:shadow-xl transition">
+
+      <div className="flex items-center justify-between">
+
+        <div>
+
+          <p className="text-gray-500 text-sm font-semibold">
+            {title}
+          </p>
+
+          <h2 className="text-3xl font-extrabold text-black mt-2">
+            {total}
+          </h2>
+
+          <p className="text-sm text-green-600 font-bold mt-2">
+            Available: {available}
+          </p>
+
+        </div>
+
+        <div className="text-5xl">
+          {icon}
+        </div>
+
+      </div>
+
     </div>
   );
 }

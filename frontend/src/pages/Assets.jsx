@@ -15,6 +15,7 @@ const ASSET_TYPES = [
   "Keyboard",
   "Mouse",
   "TP Link Router",
+  "Hard Disk",
   "Other",
 ];
 
@@ -29,11 +30,12 @@ export default function Assets() {
   const [typeFilter, setTypeFilter] = useState("");
 
   const [form, setForm] = useState({
-    asset_type: "",
-    brand_model: "",
-    serial_number: "",
-    condition: "Good",
-  });
+  asset_type: "",
+  brand_model: "",
+  serial_number: "",
+  configuration: "",
+  condition: "Good",
+});
 
   const [customAssetType, setCustomAssetType] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -112,11 +114,12 @@ export default function Assets() {
       }
 
       setForm({
-        asset_type: "",
-        brand_model: "",
-        serial_number: "",
-        condition: "Good",
-      });
+  asset_type: "",
+  brand_model: "",
+  serial_number: "",
+  configuration: "",
+  condition: "Good",
+});
       setCustomAssetType("");
       setEditingId(null);
       await loadAssets();
@@ -130,32 +133,41 @@ export default function Assets() {
     setEditingId(a.id);
 
     if (ASSET_TYPES.includes(a.asset_type)) {
-      setForm({
-        asset_type: a.asset_type,
-        brand_model: a.brand_model || "",
-        serial_number: a.serial_number || "",
-        condition: a.condition || "Good",
-      });
-      setCustomAssetType("");
-    } else {
-      setForm({
-        asset_type: "Other",
-        brand_model: a.brand_model || "",
-        serial_number: a.serial_number || "",
-        condition: a.condition || "Good",
-      });
-      setCustomAssetType(a.asset_type || "");
+
+  setForm({
+    asset_type: a.asset_type || "",
+    brand_model: a.brand_model || "",
+    serial_number: a.serial_number || "",
+    configuration: a.configuration || "",
+    condition: a.condition || "Good",
+  });
+
+  setCustomAssetType("");
+
+} else {
+
+  setForm({
+    asset_type: "Other",
+    brand_model: a.brand_model || "",
+    serial_number: a.serial_number || "",
+    configuration: a.configuration || "",
+    condition: a.condition || "Good",
+  });
+
+  setCustomAssetType(a.asset_type || "");
     }
+
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setForm({
-      asset_type: "",
-      brand_model: "",
-      serial_number: "",
-      condition: "Good",
-    });
+  asset_type: "",
+  brand_model: "",
+  serial_number: "",
+  configuration: "",
+  condition: "Good",
+});
     setCustomAssetType("");
     notifyInfo("Edit cancelled ❌");
   };
@@ -224,7 +236,25 @@ export default function Assets() {
               </option>
             ))}
           </select>
+          {form.asset_type === "Laptop" && (
+  <textarea
+    placeholder={`Configuration Details
 
+Example:
+Processor:
+RAM:
+Storage:`}
+    value={form.configuration}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        configuration: e.target.value,
+      })
+    }
+    rows={6}
+    className="w-full rounded-xl p-3 bg-white text-black placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 md:col-span-2"
+  />
+)}
           {form.asset_type === "Other" && (
             <Input
               placeholder="Enter Asset Type"
@@ -323,6 +353,7 @@ export default function Assets() {
             <thead>
               <tr className="bg-gray-100 text-left">
                 <th className="p-2">Type</th>
+                <th className="p-2">Configuration</th>
                 <th className="p-2">Serial</th>
                 <th className="p-2">Status</th>
                 <th className="p-2">Action</th>
@@ -336,6 +367,9 @@ export default function Assets() {
                     <div className="font-semibold">{a.asset_type}</div>
                     <div className="text-xs text-gray-500">{a.brand_model}</div>
                   </td>
+                  <td className="p-2 text-xs whitespace-pre-wrap">
+  {a.configuration || "-"}
+</td>
                   <td className="p-2 font-mono">{a.serial_number}</td>
                   <td className="p-2">{a.status}</td>
                   <td className="p-2">
@@ -359,7 +393,7 @@ export default function Assets() {
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-4 text-center text-gray-500">
+                  <td colSpan={5} className="p-4 text-center text-gray-500">
                     No assets found.
                   </td>
                 </tr>
@@ -380,5 +414,3 @@ function Input(props) {
     />
   );
 }
-
-

@@ -41,15 +41,24 @@ def init_db():
 
     # ---------------- ASSETS ----------------
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS assets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            asset_type TEXT NOT NULL,
-            brand_model TEXT,
-            serial_number TEXT UNIQUE NOT NULL,
-            condition TEXT DEFAULT 'Good',
-            status TEXT DEFAULT 'Available'
-        )
-    """)
+    CREATE TABLE IF NOT EXISTS assets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        asset_type TEXT NOT NULL,
+        brand_model TEXT,
+        serial_number TEXT UNIQUE NOT NULL,
+        configuration TEXT,
+        condition TEXT DEFAULT 'Good',
+        status TEXT DEFAULT 'Available'
+    )
+""")
+    
+    _ensure_columns(
+    conn,
+    "assets",
+    {
+        "configuration": "configuration TEXT",
+    },
+)
 
     # ---------------- HISTORY ----------------
     conn.execute("""
