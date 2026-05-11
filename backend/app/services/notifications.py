@@ -125,6 +125,8 @@ def send_asset_assignment_email(
     asset_serial_number,
     assigned_date,
     assigned_by,
+    issued_type=None,
+    tracking_number=None,
 ):
     recipient = _normalize_email(employee_email)
     if not recipient:
@@ -152,6 +154,8 @@ def send_asset_assignment_email(
         f"- Asset Configuration: {asset_configuration or '-'}\n"
         f"- Asset Name: {asset_name}\n"
         f"- Serial Number: {asset_serial_number or '-'}\n"
+        f"- Issue Type: {issued_type or '-'}\n"
+        f"- Tracking Number: {tracking_number or '-'}\n"
         f"- Assigned Date: {assigned_date}\n"
         f"- Assigned By: {assigned_by}\n"
         f"- Company Name: {company_name}\n\n"
@@ -178,8 +182,11 @@ def send_asset_return_email(
     asset_type,
     asset_configuration,
     asset_serial_number,
+    issue_date=None,
     return_date,
     condition_status="Clean and Neat Condition",
+    issued_type=None,
+    tracking_number=None,
 ):
     recipient = _normalize_email(employee_email)
     if not recipient:
@@ -207,7 +214,10 @@ def send_asset_return_email(
         f"- Asset Type: {asset_type or '-'}\n"
         f"- Asset Configuration: {asset_configuration or '-'}\n"
         f"- Serial Number: {asset_serial_number or '-'}\n"
+        f"- Issue Date: {issue_date or '-'}\n"
         f"- Return Date: {return_date}\n"
+        f"- Issue Type: {issued_type or '-'}\n"
+        f"- Tracking Number: {tracking_number or '-'}\n"
         f"- Asset Condition Status: {condition_status}\n\n"
         "Thank you for returning the asset in clean and neat condition.\n\n"
         f"Regards,\n{company_name}\n"

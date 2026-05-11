@@ -11,6 +11,16 @@ def get_db_connection():
     return conn
 
 
+def _ensure_columns(conn, table_name, required_columns):
+    existing = {
+        row["name"] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    for column_name, column_sql in required_columns.items():
+        if column_name in existing:
+            continue
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_sql}")
+
+
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
@@ -48,9 +58,11 @@ def init_db():
 
             employee_id INTEGER,
             asset_id INTEGER,
+            rental_id INTEGER,
 
             emp_name TEXT,
             emp_id TEXT,
+            employee_email TEXT,
             department TEXT,
 
             asset_type TEXT,
@@ -62,7 +74,9 @@ def init_db():
             status TEXT NOT NULL,
 
             remarks TEXT,
-            issued_type TEXT
+            issued_type TEXT,
+            asset_source TEXT DEFAULT 'company',
+            tracking_number TEXT
         )
     """)
 
@@ -76,7 +90,7 @@ def init_db():
             po_date TEXT,
             end_date TEXT,
 
-            status TEXT DEFAULT 'In Stock',
+            status TEXT DEFAULT 'Available',
             current_employee_id INTEGER,
 
             issue_date TEXT,
@@ -86,6 +100,17 @@ def init_db():
             FOREIGN KEY (current_employee_id) REFERENCES employees(id)
         )
     """)
+
+    _ensure_columns(
+        conn,
+        "history",
+        {
+            "rental_id": "rental_id INTEGER",
+            "employee_email": "employee_email TEXT",
+            "asset_source": "asset_source TEXT DEFAULT 'company'",
+            "tracking_number": "tracking_number TEXT",
+        },
+    )
 
     conn.commit()
     conn.close()
