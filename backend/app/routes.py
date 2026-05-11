@@ -290,11 +290,11 @@ def _get_assignment_with_mail_context(conn, assignment_id):
             h.issued_type,
             h.asset_source,
             h.tracking_number,
-            COALESCE(e.email, h.employee_email) AS effective_email,
-            r.laptop_name AS rental_name,
-            r.configuration AS rental_configuration
-            a.configuration AS asset_configuration,
-        FROM history h
+           COALESCE(e.email, h.employee_email) AS effective_email,
+r.laptop_name AS rental_name,
+r.configuration AS rental_configuration,
+a.configuration AS asset_configuration
+FROM history h
         LEFT JOIN employees e ON e.id = h.employee_id
         LEFT JOIN rentals r ON r.id = h.rental_id
         LEFT JOIN assets a ON a.id = h.asset_id
