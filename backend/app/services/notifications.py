@@ -253,7 +253,7 @@ style="border-collapse:collapse;font-size:14px;">
 </tr>
 
 <tr style="background:#f8f9fb;">
-<td><b>Issue Type</b></td>
+<td><b>Mode of Issued</b></td>
 <td>{issued_type or '-'}</td>
 </tr>
 
@@ -475,17 +475,17 @@ style="border-collapse:collapse;font-size:14px;">
 </tr>
 
 <tr style="background:#f8f9fb;">
-<td><b>Issue Date</b></td>
+<td><b>Issued Date</b></td>
 <td>{issue_date or '-'}</td>
 </tr>
 
 <tr>
-<td><b>Return Date</b></td>
+<td><b>Returned Date</b></td>
 <td>{return_date}</td>
 </tr>
 
 <tr style="background:#f8f9fb;">
-<td><b>Issue Type</b></td>
+<td><b>Mode of Issued</b></td>
 <td>{issued_type or '-'}</td>
 </tr>
 
