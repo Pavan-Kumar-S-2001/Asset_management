@@ -507,17 +507,69 @@ export default function IssueReturn() {
     }
   };
 
-  const exportRentals = () => {
-    const base =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-    window.open(`${base}/export/rentals.csv`, "_blank");
-  };
+  const exportRentals = async () => {
+  try {
+    const response = await api.get("/export/rentals.csv", {
+      responseType: "blob",
+    });
 
-  const exportIssuedAssets = () => {
-    const base =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-    window.open(`${base}/export/issued-assets.csv`, "_blank");
-  };
+    const url = window.URL.createObjectURL(
+      new Blob([response.data])
+    );
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "rentals.csv");
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    notifySuccess("Rental CSV exported successfully");
+  } catch (error) {
+    console.error(error);
+
+    notifyError(
+      error?.response?.data?.error ||
+      "Failed to export rentals CSV"
+    );
+  }
+};
+
+  const exportIssuedAssets = async () => {
+  try {
+    const response = await api.get(
+      "/export/issued-assets.csv",
+      {
+        responseType: "blob",
+      }
+    );
+
+    const url = window.URL.createObjectURL(
+      new Blob([response.data])
+    );
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      "issued-assets.csv"
+    );
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    notifySuccess("Issued assets CSV exported successfully");
+  } catch (error) {
+    console.error(error);
+
+    notifyError(
+      error?.response?.data?.error ||
+      "Failed to export issued assets CSV"
+    );
+  }
+};
 
   const openEditRental = (rental) => {
     setEditingRental(rental);
