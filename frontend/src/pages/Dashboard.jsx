@@ -8,16 +8,19 @@ export default function Dashboard() {
   const [employees, setEmployees] = useState([]);
   const [assets, setAssets] = useState([]);
   const [history, setHistory] = useState([]);
+  const [rentals, setRentals] = useState([]);
 
   const loadAll = async () => {
-    const [emp, ast, his] = await Promise.all([
-      api.get("/employees"),
-      api.get("/assets"),
-      api.get("/history"),
-    ]);
+    const [emp, ast, his, ren] = await Promise.all([
+  api.get("/employees"),
+  api.get("/assets"),
+  api.get("/history"),
+  api.get("/rentals"),
+]);
     setEmployees(emp.data || []);
     setAssets(ast.data || []);
     setHistory(his.data || []);
+    setRentals(ren.data || []);
   };
 
   useEffect(() => {
@@ -38,9 +41,7 @@ export default function Dashboard() {
     (a) => a.status === "Issued"
   ).length;
 
-  const rentalAssets = history.filter(
-    (h) => h.asset_source === "rental"
-  ).length;
+  const rentalAssets = rentals.length;
 
   const cameraAssets = assets.filter(
     (a) =>
@@ -90,7 +91,7 @@ export default function Dashboard() {
     ).length,
   };
 
-}, [employees, assets, history]);
+}, [employees, assets, history, rentals]);
 
   return (
     <div className="space-y-6">
