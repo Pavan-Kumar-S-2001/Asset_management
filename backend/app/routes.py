@@ -454,7 +454,7 @@ def _backfill_legacy_rental_assignments(conn):
             serial_number=row["serial_number"],
             issue_date=row["issue_date"] or datetime.now().isoformat(),
             remarks=row["remarks"] or "Legacy rental assignment migrated to history",
-            issued_type="By Hand",
+            issued_type="In-Hand",
             tracking_number="",
             rental_id=row["id"],
         )
@@ -971,7 +971,7 @@ def issue_rental():
     employee_id = data.get("employee_id")
     rental_id = data.get("rental_id")
     remarks = (data.get("remarks") or "").strip()
-    issued_type = (data.get("issued_type") or "By Hand").strip()
+    issued_type = (data.get("issued_type") or "In-Hand").strip()
     tracking_number = (data.get("tracking_number") or "").strip()
 
     if not employee_id or not rental_id:

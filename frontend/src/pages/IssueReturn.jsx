@@ -749,7 +749,7 @@ export default function IssueReturn() {
               }
             >
               <option value="">Select Issue Type</option>
-              <option value="By Hand">By Hand</option>
+              <option value="In-Hand">In-Hand</option>
               <option value="By DTDC Courier">By DTDC Courier</option>
               <option value="Others">Others</option>
             </select>
@@ -897,7 +897,7 @@ export default function IssueReturn() {
               onChange={(event) => setFilterIssuedType(event.target.value)}
             >
               <option value="">All Issue Types</option>
-              <option value="By Hand">By Hand</option>
+              <option value="In-Hand">In-Hand</option>
               <option value="By DTDC Courier">By DTDC Courier</option>
             </select>
           </div>
