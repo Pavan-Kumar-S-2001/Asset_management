@@ -252,20 +252,41 @@ export default function IssueReturn() {
   }, [availableCompanyAssets, issueableRentals]);
 
   const filteredAvailableAssets = useMemo(() => {
-    const search = assetSearch.trim().toLowerCase();
+    const search = String(assetSearch || "")
+  .toLowerCase()
+  .trim();
     if (!search) {
       return combinedAvailableAssets;
     }
 
     return combinedAvailableAssets.filter((asset) => {
-      return (
-        (asset.asset_type || "").toLowerCase().includes(search) ||
-        (asset.brand_model || "").toLowerCase().includes(search) ||
-        (asset.serial_number || "").toLowerCase().includes(search) ||
-        (asset.configuration || "").toLowerCase().includes(search) ||
-        (asset.ownership_label || "").toLowerCase().includes(search)
-      );
-    });
+
+  const assetType = String(asset.asset_type || "").toLowerCase().trim();
+
+  const brandModel = String(asset.brand_model || "")
+    .toLowerCase()
+    .trim();
+
+  const serialNumber = String(asset.serial_number || "")
+    .toLowerCase()
+    .trim();
+
+  const configuration = String(asset.configuration || "")
+    .toLowerCase()
+    .trim();
+
+  const ownership = String(asset.ownership_label || "")
+    .toLowerCase()
+    .trim();
+
+  return (
+    assetType.includes(search) ||
+    brandModel.includes(search) ||
+    serialNumber.includes(search) ||
+    configuration.includes(search) ||
+    ownership.includes(search)
+  );
+});
   }, [assetSearch, combinedAvailableAssets]);
 
   const selectedEmployee = useMemo(
