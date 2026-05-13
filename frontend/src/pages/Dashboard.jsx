@@ -24,8 +24,14 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+  loadAll();
+
+  const interval = setInterval(() => {
     loadAll();
-  }, []);
+  }, 10000);
+
+  return () => clearInterval(interval);
+}, []);
 
  const stats = useMemo(() => {
 
@@ -103,7 +109,9 @@ export default function Dashboard() {
           </h1>
           <p className="text-m font-bold text-black-500">By S Pavan Kumar</p>
         </div>
-
+<span className="rounded-lg bg-green-100 px-3 py-2 text-xs font-bold text-green-700">
+  Live Updates Active
+</span>
         <button
           onClick={loadAll}
           className="px-5 py-2 rounded-xl bg-black text-white font-semibold hover:opacity-90"

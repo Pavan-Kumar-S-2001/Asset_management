@@ -76,6 +76,7 @@ function handleMailToast(data, actionLabel) {
 export default function IssueReturn() {
   const [employees, setEmployees] = useState([]);
   const [companyAssets, setCompanyAssets] = useState([]);
+  const [showRentalAssets, setShowRentalAssets] = useState(false);
   const [rentals, setRentals] = useState([]);
   const [issuedAssignments, setIssuedAssignments] = useState([]);
 
@@ -252,41 +253,20 @@ export default function IssueReturn() {
   }, [availableCompanyAssets, issueableRentals]);
 
   const filteredAvailableAssets = useMemo(() => {
-    const search = String(assetSearch || "")
-  .toLowerCase()
-  .trim();
+    const search = assetSearch.trim().toLowerCase();
     if (!search) {
       return combinedAvailableAssets;
     }
 
     return combinedAvailableAssets.filter((asset) => {
-
-  const assetType = String(asset.asset_type || "").toLowerCase().trim();
-
-  const brandModel = String(asset.brand_model || "")
-    .toLowerCase()
-    .trim();
-
-  const serialNumber = String(asset.serial_number || "")
-    .toLowerCase()
-    .trim();
-
-  const configuration = String(asset.configuration || "")
-    .toLowerCase()
-    .trim();
-
-  const ownership = String(asset.ownership_label || "")
-    .toLowerCase()
-    .trim();
-
-  return (
-    assetType.includes(search) ||
-    brandModel.includes(search) ||
-    serialNumber.includes(search) ||
-    configuration.includes(search) ||
-    ownership.includes(search)
-  );
-});
+      return (
+        (asset.asset_type || "").toLowerCase().includes(search) ||
+        (asset.brand_model || "").toLowerCase().includes(search) ||
+        (asset.serial_number || "").toLowerCase().includes(search) ||
+        (asset.configuration || "").toLowerCase().includes(search) ||
+        (asset.ownership_label || "").toLowerCase().includes(search)
+      );
+    });
   }, [assetSearch, combinedAvailableAssets]);
 
   const selectedEmployee = useMemo(
@@ -528,69 +508,17 @@ export default function IssueReturn() {
     }
   };
 
-  const exportRentals = async () => {
-  try {
-    const response = await api.get("/export/rentals.csv", {
-      responseType: "blob",
-    });
+  const exportRentals = () => {
+    const base =
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    window.open(`${base}/export/rentals.csv`, "_blank");
+  };
 
-    const url = window.URL.createObjectURL(
-      new Blob([response.data])
-    );
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "rentals.csv");
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    notifySuccess("Rental CSV exported successfully");
-  } catch (error) {
-    console.error(error);
-
-    notifyError(
-      error?.response?.data?.error ||
-      "Failed to export rentals CSV"
-    );
-  }
-};
-
-  const exportIssuedAssets = async () => {
-  try {
-    const response = await api.get(
-      "/export/issued-assets.csv",
-      {
-        responseType: "blob",
-      }
-    );
-
-    const url = window.URL.createObjectURL(
-      new Blob([response.data])
-    );
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      "issued-assets.csv"
-    );
-
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    notifySuccess("Issued assets CSV exported successfully");
-  } catch (error) {
-    console.error(error);
-
-    notifyError(
-      error?.response?.data?.error ||
-      "Failed to export issued assets CSV"
-    );
-  }
-};
+  const exportIssuedAssets = () => {
+    const base =
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    window.open(`${base}/export/issued-assets.csv`, "_blank");
+  };
 
   const openEditRental = (rental) => {
     setEditingRental(rental);
@@ -749,7 +677,7 @@ export default function IssueReturn() {
               }
             >
               <option value="">Select Issue Type</option>
-              <option value="In-Hand">In-Hand</option>
+              <option value="By Hand">By Hand</option>
               <option value="By DTDC Courier">By DTDC Courier</option>
               <option value="Others">Others</option>
             </select>
@@ -781,10 +709,16 @@ export default function IssueReturn() {
             )}
 
             <Input
+            
               placeholder="Search available asset (type / name / serial / source)..."
               value={assetSearch}
               onChange={(event) => setAssetSearch(event.target.value)}
             />
+           {assetSearch.trim() && (
+  <p className="mt-1 text-xs text-gray-500">
+    Matching assets: <b>{filteredAvailableAssets.length}</b>
+  </p>
+)}
 
             <select
               className="w-full rounded-xl border bg-white p-2 text-black"
@@ -797,12 +731,18 @@ export default function IssueReturn() {
               }
             >
               <option value="">Select Available Asset</option>
-              {filteredAvailableAssets.map((asset) => (
-                <option key={asset.key} value={asset.key}>
-                  {asset.asset_type} | {asset.serial_number} | {asset.brand_model} |{" "}
-                  {asset.ownership_label}
-                </option>
-              ))}
+
+{filteredAvailableAssets.length === 0 ? (
+  <option disabled>
+    No matching assets found
+  </option>
+) : (
+  filteredAvailableAssets.map((asset) => (
+    <option key={asset.key} value={asset.key}>
+      {asset.asset_type} | {asset.serial_number} | {asset.brand_model} | {asset.ownership_label}
+    </option>
+  ))
+)}
             </select>
 
             {selectedAsset && (
@@ -855,145 +795,48 @@ export default function IssueReturn() {
           </form>
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-black">Issued Assets List</h2>
-              <p className="text-sm text-gray-600">
-                Return company and rental assets from the same table
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={exportIssuedAssets}
-                className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white"
-              >
-                Export CSV
-              </button>
-              <button
-                onClick={loadAll}
-                className="rounded-xl bg-black px-4 py-2 text-white"
-              >
-                {loading ? "Loading..." : "Refresh"}
-              </button>
-            </div>
-          </div>
-
-          <div className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-3">
-            <Input
-              placeholder="Filter by employee..."
-              value={filterEmployee}
-              onChange={(event) => setFilterEmployee(event.target.value)}
-            />
-            <Input
-              placeholder="Filter by asset / serial..."
-              value={filterAssetType}
-              onChange={(event) => setFilterAssetType(event.target.value)}
-            />
-            <select
-              className="rounded-xl border bg-white p-2 text-black"
-              value={filterIssuedType}
-              onChange={(event) => setFilterIssuedType(event.target.value)}
-            >
-              <option value="">All Issue Types</option>
-              <option value="In-Hand">In-Hand</option>
-              <option value="By DTDC Courier">By DTDC Courier</option>
-            </select>
-          </div>
-
-          <p className="mb-3 text-xs text-gray-500">
-            Showing <b>{filteredIssuedAssignments.length}</b> active assignments
-          </p>
-
-          <div className="overflow-auto">
-            <table className="w-full text-sm text-black">
-              <thead>
-                <tr className="bg-gray-100 text-left">
-                  <th className="p-2">Employee</th>
-                  <th className="p-2">Asset</th>
-                  <th className="p-2">Source</th>
-                  <th className="p-2">Serial</th>
-                  <th className="p-2">Issue Type</th>
-                  <th className="p-2">Issue Date</th>
-                  <th className="p-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredIssuedAssignments.map((assignment) => (
-                  <tr key={assignment.assignment_id} className="border-b">
-                    <td className="p-2">
-                      <div className="font-semibold">{assignment.emp_name}</div>
-                      <div className="text-xs text-gray-500">
-                        {assignment.emp_id}
-                      </div>
-                    </td>
-                    <td className="p-2">
-                      <div className="font-semibold">{assignment.asset_type}</div>
-                      <div className="text-xs text-gray-500">
-                        {assignment.brand_model || "-"}
-                      </div>
-                    </td>
-                    <td className="p-2">
-                      {sourceBadge(assignment.asset_source)}
-                    </td>
-                    <td className="p-2 font-mono">{assignment.serial_number}</td>
-                    <td className="p-2">{assignment.issued_type || "-"}</td>
-                    <td className="p-2">
-                      {assignment.issue_date
-                        ? new Date(assignment.issue_date).toLocaleString()
-                        : "-"}
-                    </td>
-                    <td className="p-2">
-                      <button
-                        onClick={() => quickReturn(assignment)}
-                        className="rounded-lg bg-green-600 px-3 py-1 text-xs font-bold text-white"
-                      >
-                        Return
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-
-                {filteredIssuedAssignments.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="p-4 text-center text-gray-500">
-                      No issued assets found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+        
 
       <div className="rounded-2xl bg-white p-6 shadow">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-bold text-black">Rental Asset List</h2>
-            <p className="text-sm text-gray-600">
-              Upload, review, edit, and track rental assets. Assignment happens
-              from the main Issue Laptop form above.
-            </p>
-          </div>
+  <div>
+    
+    <h2 className="text-2xl font-bold text-black">
+      Rental Asset List
+    </h2>
 
-          <div className="flex gap-3">
-            <button
-              onClick={exportRentals}
-              className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white"
-            >
-              Export CSV
-            </button>
-            <button
-              onClick={loadAll}
-              className="rounded-xl bg-black px-4 py-2 font-bold text-white"
-            >
-              {rentalLoading ? "Loading..." : "Refresh"}
-            </button>
-          </div>
-        </div>
+    <p className="text-sm text-gray-600">
+      Upload, review, edit, and track rental assets.
+    </p>
+  </div>
 
+  <div className="flex gap-3">
+    <button
+      onClick={() => setShowRentalAssets(!showRentalAssets)}
+      className="rounded-xl bg-black px-4 py-2 font-bold text-white"
+    >
+      {showRentalAssets
+        ? "Hide Rental Assets"
+        : "Show Rental Assets"}
+    </button>
+
+    <button
+      onClick={exportRentals}
+      className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white"
+    >
+      Export CSV
+    </button>
+
+    <button
+      onClick={loadAll}
+      className="rounded-xl bg-black px-4 py-2 font-bold text-white"
+    >
+      {rentalLoading ? "Loading..." : "Refresh"}
+    </button>
+  </div>
+</div>
+{showRentalAssets && (
+  <> 
         <div className="mt-4">
           <Input
             placeholder="Search rental by name / serial / status / employee..."
@@ -1074,6 +917,7 @@ export default function IssueReturn() {
                     No rental assets found
                   </td>
                 </tr>
+                
               )}
             </tbody>
           </table>
@@ -1101,8 +945,10 @@ export default function IssueReturn() {
               Next
             </button>
           </div>
-        )}
-
+      )}
+  </>
+)}
+</div>
         <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="rounded-2xl border p-4 lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
@@ -1206,7 +1052,7 @@ export default function IssueReturn() {
             </div>
           </div>
         </div>
-      </div>
+
 
       {editingRental && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -1299,5 +1145,6 @@ export default function IssueReturn() {
         </div>
       )}
     </div>
+    </div>
   );
-}
+  }

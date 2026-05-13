@@ -1520,3 +1520,4 @@ def returned_assets():
     conn.close()
 
     return jsonify(_serialize_rows(rows))
+

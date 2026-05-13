@@ -4,6 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import IssuedAssets from "./pages/IssuedAssets";
 import Employees from "./pages/Employees";
 import Assets from "./pages/Assets";
 import IssueReturn from "./pages/IssueReturn";
@@ -23,7 +24,7 @@ function AppLayout() {
         backgroundImage: "url('/bg.jpg')", //this is for the image inside frontend
       }}
     >
-      <div className="flex gap-5">
+      <div className="flex gap-5 pt-16 md:pt-0">
         {/* ✅ Sidebar only for logged-in pages */}
         {!isLoginPage && <Sidebar />}
 
@@ -63,6 +64,15 @@ function AppLayout() {
               element={
                 <ProtectedRoute>
                   <IssueReturn />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/issued-assets"
+              element={
+                <ProtectedRoute>
+                  <IssuedAssets />
                 </ProtectedRoute>
               }
             />
