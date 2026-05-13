@@ -559,3 +559,47 @@ Microsoft Dynamics
         log_action="return",
         asset_name=asset_name,
     )
+
+def send_email(to_email, subject, body):
+
+    recipient = _normalize_email(to_email)
+
+    if not recipient:
+        return {
+            "sent": False,
+            "error": "Missing recipient email",
+        }
+
+    message = Message(
+        subject=subject,
+        recipients=[recipient],
+        cc=_get_notification_cc_list(recipient),
+        sender=current_app.config.get("MAIL_DEFAULT_SENDER")
+        or current_app.config.get("MAIL_USERNAME"),
+    )
+
+    message.html = body
+
+    try:
+
+        mail.send(message)
+
+        current_app.logger.info(
+            "Vendor email sent successfully to %s",
+            recipient,
+        )
+
+        return {
+            "sent": True
+        }
+
+    except Exception as error:
+
+        current_app.logger.exception(
+            "Failed to send vendor email"
+        )
+
+        return {
+            "sent": False,
+            "error": str(error),
+        }

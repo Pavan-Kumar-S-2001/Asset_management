@@ -100,35 +100,38 @@ def init_db():
 
     # ---------------- RENTALS ----------------
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS rentals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            laptop_name TEXT NOT NULL,
-            serial_number TEXT UNIQUE NOT NULL,
-            configuration TEXT,
-            po_date TEXT,
-            end_date TEXT,
+    CREATE TABLE IF NOT EXISTS rentals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            status TEXT DEFAULT 'Available',
-            current_employee_id INTEGER,
+        laptop_name TEXT NOT NULL,
+        serial_number TEXT UNIQUE NOT NULL,
 
-            issue_date TEXT,
-            return_date TEXT,
-            remarks TEXT,
+        configuration TEXT,
 
-            FOREIGN KEY (current_employee_id) REFERENCES employees(id)
-        )
-    """)
+        vendor_name TEXT,
+        vendor_email TEXT,
 
-    _ensure_columns(
-        conn,
-        "history",
-        {
-            "rental_id": "rental_id INTEGER",
-            "employee_email": "employee_email TEXT",
-            "asset_source": "asset_source TEXT DEFAULT 'company'",
-            "tracking_number": "tracking_number TEXT",
-        },
+        po_date TEXT,
+        end_date TEXT,
+
+        status TEXT DEFAULT 'Available',
+
+        current_employee_id INTEGER,
+
+        issue_date TEXT,
+        return_date TEXT,
+
+        remarks TEXT,
+
+        FOREIGN KEY (current_employee_id) REFERENCES employees(id)
     )
-
-    conn.commit()
-    conn.close()
+""")
+    
+    _ensure_columns(
+    conn,
+    "rentals",
+    {
+        "vendor_name": "vendor_name TEXT",
+        "vendor_email": "vendor_email TEXT",
+    },
+)

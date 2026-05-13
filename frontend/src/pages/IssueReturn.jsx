@@ -571,6 +571,47 @@ export default function IssueReturn() {
     }
   };
 
+  const returnRentalToVendor = async (rentalId) => {
+
+  const confirmed = await confirmPopup({
+    title: "Return To Vendor?",
+    text: "Confirm returning this rental asset to vendor.",
+    confirmButtonText: "Return",
+    cancelButtonText: "Cancel",
+    icon: "warning",
+  });
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+
+    const response = await api.post(
+      "/return-rental-to-vendor",
+      {
+        rental_id: rentalId,
+      }
+    );
+
+    notifySuccess(
+      response.data?.message ||
+      "Rental asset returned to vendor successfully"
+    );
+
+    await loadAll();
+
+  } catch (error) {
+
+    console.error(error);
+
+    notifyError(
+      error?.response?.data?.error ||
+      "Failed to return asset to vendor"
+    );
+  }
+};
+
   return (
     <div className="grid gap-6">
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr,1fr]">
@@ -906,6 +947,12 @@ export default function IssueReturn() {
                       >
                         Delete
                       </button>
+                      <button
+                      onClick={() => returnRentalToVendor(rental.id)}
+                      className="rounded-lg bg-orange-600 px-3 py-1 text-xs font-bold text-white"
+                    >
+                      Return To Vendor
+                    </button>
                     </div>
                   </td>
                 </tr>
@@ -950,7 +997,7 @@ export default function IssueReturn() {
 )}
 </div>
         <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="rounded-2xl border p-4 lg:col-span-2">
+          <div className="rounded-2xl border bg-white p-4 lg:col-span-2 shadow">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-bold">Add Rental Asset</h3>
 
@@ -1034,7 +1081,7 @@ export default function IssueReturn() {
             </form>
           </div>
 
-          <div className="rounded-2xl border p-4">
+          <div className="rounded-2xl border bg-white p-4 shadow">
             <h3 className="mb-3 font-bold">Status Summary</h3>
             <div className="grid gap-3 text-sm text-gray-700">
               <div className="rounded-xl bg-green-50 px-3 py-2">

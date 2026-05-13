@@ -52,27 +52,60 @@ function handleMailToast(data, actionLabel) {
 export default function IssuedAssets() {
   const [issuedAssignments, setIssuedAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exchangeOpen, setExchangeOpen] = useState(false);
+  const [exchangeAssignment, setExchangeAssignment] = useState(null);
+  const [exchangeAssetKey, setExchangeAssetKey] = useState("");
+  const [availableAssets, setAvailableAssets] = useState([]);
 
   const [filterEmployee, setFilterEmployee] = useState("");
   const [filterAssetType, setFilterAssetType] = useState("");
   const [filterIssuedType, setFilterIssuedType] = useState("");
 
-  const loadIssuedAssets = async () => {
-    setLoading(true);
+  const loadAvailableAssets = async () => {
+  try {
+    const response = await api.get("/assets");
 
-    try {
-      const response = await api.get("/issued-assets");
-      setIssuedAssignments(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error(error);
-      notifyError("Failed to load issued assets");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const onlyAvailable = (response.data || []).filter(
+      (asset) => asset.status === "Available"
+    );
+
+    setAvailableAssets(onlyAvailable);
+
+  } catch (error) {
+    console.error(error);
+
+    notifyError("Failed to load available assets");
+  }
+};
+
+ const loadIssuedAssets = async () => {
+  setLoading(true);
+
+  try {
+    const response = await api.get("/issued-assets");
+
+    setIssuedAssignments(
+      Array.isArray(response.data)
+        ? response.data
+        : []
+    );
+  } catch (error) {
+    console.error(error);
+
+    notifyError("Failed to load issued assets");
+  } finally {
+    setLoading(false);
+  }
+};
+const startExchange = (assignment) => {
+  setExchangeAssignment(assignment);
+  setExchangeAssetKey("");
+  setExchangeOpen(true);
+};
 
   useEffect(() => {
   loadIssuedAssets();
+  loadAvailableAssets();
 
   const interval = setInterval(() => {
     loadIssuedAssets();
@@ -152,6 +185,36 @@ export default function IssuedAssets() {
       );
     }
   };
+  const confirmExchange = async () => {
+
+  if (!exchangeAssetKey) {
+    notifyError("Please select replacement asset");
+    return;
+  }
+
+  try {
+
+    await api.post("/exchange-asset", {
+      old_assignment_id: exchangeAssignment.assignment_id,
+      new_asset_id: exchangeAssetKey,
+    });
+
+    notifySuccess("Asset exchanged successfully");
+
+    setExchangeOpen(false);
+
+    await loadIssuedAssets();
+    await loadAvailableAssets();
+
+  } catch (error) {
+    console.error(error);
+
+    notifyError(
+      error?.response?.data?.error ||
+      "Failed to exchange asset"
+    );
+  }
+};
 
   const exportIssuedAssets = () => {
     const base =
@@ -272,13 +335,24 @@ export default function IssuedAssets() {
                 </td>
 
                 <td className="p-2">
-                  <button
-                    onClick={() => quickReturn(assignment)}
-                    className="rounded-lg bg-green-600 px-3 py-1 text-xs font-bold text-white"
-                  >
-                    Return
-                  </button>
-                </td>
+  <div className="flex gap-2">
+
+    <button
+      onClick={() => quickReturn(assignment)}
+      className="rounded-lg bg-green-600 px-3 py-1 text-xs font-bold text-white"
+    >
+      Return
+    </button>
+
+    <button
+      onClick={() => startExchange(assignment)}
+      className="rounded-lg bg-orange-500 px-3 py-1 text-xs font-bold text-white"
+    >
+      Exchange
+    </button>
+
+  </div>
+</td>
               </tr>
             ))}
 
@@ -295,6 +369,76 @@ export default function IssuedAssets() {
           </tbody>
         </table>
       </div>
+
+      {exchangeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
+
+            <h2 className="mb-4 text-xl font-bold text-black">
+              Exchange Asset
+            </h2>
+
+            <div className="mb-4 rounded-xl bg-gray-100 p-4 text-sm">
+
+              <p>
+                <b>Employee:</b> {exchangeAssignment?.emp_name}
+              </p>
+
+              <p>
+                <b>Current Asset:</b> {exchangeAssignment?.asset_type}
+              </p>
+
+              <p>
+                <b>Serial:</b> {exchangeAssignment?.serial_number}
+              </p>
+
+            </div>
+
+            <select
+              value={exchangeAssetKey}
+              onChange={(e) =>
+                setExchangeAssetKey(e.target.value)
+              }
+              className="w-full rounded-xl border p-3"
+            >
+              <option value="">
+                Select Replacement Asset
+              </option>
+
+              {availableAssets.map((asset) => (
+                <option
+                  key={asset.id}
+                  value={asset.id}
+                >
+                  {asset.asset_type} | {asset.serial_number} | {asset.brand_model}
+                </option>
+              ))}
+            </select>
+
+            <div className="mt-5 flex justify-end gap-3">
+
+              <button
+                onClick={() => setExchangeOpen(false)}
+                className="rounded-xl border px-4 py-2"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={confirmExchange}
+                className="rounded-xl bg-orange-500 px-4 py-2 font-bold text-white"
+              >
+                Confirm Exchange
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
     </div>
   );
 }

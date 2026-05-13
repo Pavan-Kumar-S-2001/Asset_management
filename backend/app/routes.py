@@ -10,6 +10,7 @@ from .services.notifications import (
     build_asset_name,
     send_asset_assignment_email,
     send_asset_return_email,
+    send_email,
 )
 
 main = Blueprint("main", __name__)
@@ -399,6 +400,187 @@ def _send_return_mail(return_result):
         mail_result=mail_result,
     )
 
+def send_vendor_return_email(asset):
+
+    vendor_email = asset.get("vendor_email")
+
+    if not vendor_email:
+        return
+
+    subject = "Rental Asset Return Confirmation - DTC INFOTECH"
+
+    html_body = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; background:#f4f4f4; padding:20px;">
+
+      <div style="
+        max-width:700px;
+        margin:auto;
+        background:white;
+        border-radius:12px;
+        overflow:hidden;
+        box-shadow:0 4px 15px rgba(0,0,0,0.1);
+      ">
+
+        <div style="
+          background:#0b1f4d;
+          color:white;
+          padding:20px;
+          text-align:center;
+        ">
+          <h1 style="margin:0;">
+            DTC INFOTECH PVT LTD
+          </h1>
+
+          <p style="margin-top:8px; color:#dbe7ff;">
+            Rental Asset Return Confirmation
+          </p>
+        </div>
+
+        <div style="padding:30px; color:#111827;">
+
+          <p>
+            Dear <b>{asset.get('vendor_name', 'Vendor')}</b>,
+          </p>
+
+          <p>
+            This is to inform you that the following rental asset
+            has been returned successfully.
+          </p>
+
+          <table style="
+            width:100%;
+            border-collapse:collapse;
+            margin-top:20px;
+          ">
+
+            <tr>
+              <td style="
+                padding:12px;
+                border:1px solid #c7d2fe;
+                background:#eef4ff;
+                font-weight:bold;
+              ">
+                Laptop Name
+              </td>
+
+              <td style="
+                padding:12px;
+                border:1px solid #c7d2fe;
+              ">
+                {asset.get('laptop_name')}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="
+                padding:12px;
+                border:1px solid #c7d2fe;
+                background:#eef4ff;
+                font-weight:bold;
+              ">
+                Serial Number
+              </td>
+
+              <td style="
+                padding:12px;
+                border:1px solid #c7d2fe;
+              ">
+                {asset.get('serial_number')}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="
+                padding:12px;
+                border:1px solid #c7d2fe;
+                background:#eef4ff;
+                font-weight:bold;
+              ">
+                Configuration
+              </td>
+
+              <td style="
+                padding:12px;
+                border:1px solid #c7d2fe;
+              ">
+                {asset.get('configuration')}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="
+                padding:12px;
+                border:1px solid #c7d2fe;
+                background:#eef4ff;
+                font-weight:bold;
+              ">
+                Return Date
+              </td>
+
+              <td style="
+                padding:12px;
+                border:1px solid #c7d2fe;
+              ">
+                {datetime.now().strftime('%d-%m-%Y %I:%M %p')}
+              </td>
+            </tr>
+
+          </table>
+
+         <p style="
+  margin-top:30px;
+  font-size:15px;
+  line-height:26px;
+  color:#374151;
+">
+  Regards,<br>
+
+  <b>S Pavan Kumar</b><br>
+  IT ADMIN<br>
+  DTC INFOTECH PVT LTD
+</p>
+
+<p style="
+  font-size:13px;
+  color:#6b7280;
+  line-height:24px;
+">
+
+  AI/ML | Data | Cloud | Application Modernisation |
+  Microsoft Dynamics
+
+  <br><br>
+
+  📞 +91 6360554225<br>
+  📧 IT@dtcinfotech.com<br>
+  🌐 https://dtcinfotech.com
+
+</p>
+
+        </div>
+
+        <div style="
+          background:#f3f4f6;
+          padding:15px;
+          text-align:center;
+          font-size:12px;
+          color:#6b7280;
+        ">
+          This is an automated notification from DTC INFOTECH PVT LTD Asset Management System.
+        </div>
+
+      </div>
+
+    </body>
+    </html>
+    """
+
+    send_email(
+        to_email=vendor_email,
+        subject=subject,
+        body=html_body,
+    )
 
 def _csv_value(row, *keys):
     for key in keys:
@@ -946,17 +1128,31 @@ def add_rental():
     conn.execute(
         """
         INSERT INTO rentals
-        (laptop_name, serial_number, configuration, po_date, end_date, status)
+(
+    laptop_name,
+    serial_number,
+    configuration,
+    vendor_name,
+    vendor_email,
+    po_date,
+    end_date,
+    status
+)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
-            data.get("laptop_name"),
-            data.get("serial_number"),
-            data.get("configuration"),
-            data.get("po_date"),
-            data.get("end_date"),
-            RENTAL_STATUS_AVAILABLE,
-        ),
+    data.get("laptop_name"),
+    data.get("serial_number"),
+    data.get("configuration"),
+
+    data.get("vendor_name"),
+    data.get("vendor_email"),
+
+    data.get("po_date"),
+    data.get("end_date"),
+
+    RENTAL_STATUS_AVAILABLE,
+),
     )
     conn.commit()
     conn.close()
@@ -1229,6 +1425,8 @@ def export_rentals_csv():
             r.configuration,
             r.po_date,
             r.end_date,
+            r.vendor_name,
+            r.vendor_email,
             CASE
                 WHEN r.status IN ('Issued', 'Assigned') THEN 'Assigned'
                 WHEN r.status = 'Returned' THEN 'Returned'
@@ -1488,6 +1686,163 @@ def issued_assets():
 
     return jsonify(_serialize_rows(rows))
 
+@main.route("/exchange-asset", methods=["POST"])
+@login_required
+def exchange_asset():
+
+    data = request.json or {}
+
+    old_assignment_id = data.get("old_assignment_id")
+    new_asset_id = data.get("new_asset_id")
+
+    if not old_assignment_id or not new_asset_id:
+        return jsonify({"error": "Missing data"}), 400
+
+    conn = get_db_connection()
+
+    old_assignment = conn.execute(
+        """
+        SELECT *
+        FROM history
+        WHERE assignment_id=?
+        """,
+        (old_assignment_id,),
+    ).fetchone()
+
+    if not old_assignment:
+        conn.close()
+        return jsonify({"error": "Old assignment not found"}), 404
+
+    # RETURN OLD ASSET
+    return_result, error_response = _return_assignment(
+        conn,
+        assignment_id=old_assignment_id,
+        remarks="Asset exchanged",
+    )
+
+    if error_response:
+        conn.close()
+        return error_response
+
+    employee = conn.execute(
+        """
+        SELECT *
+        FROM employees
+        WHERE id=?
+        """,
+        (old_assignment["employee_id"],),
+    ).fetchone()
+
+    new_asset = conn.execute(
+        """
+        SELECT *
+        FROM assets
+        WHERE id=?
+        """,
+        (new_asset_id,),
+    ).fetchone()
+
+    if not new_asset:
+        conn.close()
+        return jsonify({"error": "Replacement asset not found"}), 404
+
+    # ISSUE NEW ASSET
+    issue_result, error_response = _issue_company_asset(
+        conn,
+        employee_id=employee["id"],
+        asset_id=new_asset_id,
+        remarks="Asset exchanged",
+        issued_type=old_assignment["issued_type"] or "By Hand",
+        tracking_number="",
+    )
+
+    if error_response:
+        conn.close()
+        return error_response
+
+    conn.commit()
+    conn.close()
+
+    return jsonify(_send_assignment_mail(issue_result))
+
+@main.route("/return-rental-to-vendor", methods=["POST"])
+@login_required
+def return_rental_to_vendor():
+
+    data = request.json or {}
+
+    rental_id = data.get("rental_id")
+
+    if not rental_id:
+        return jsonify({"error": "Missing rental_id"}), 400
+
+    conn = get_db_connection()
+
+    rental = conn.execute(
+        """
+        SELECT *
+        FROM rentals
+        WHERE id=?
+        """,
+        (rental_id,),
+    ).fetchone()
+
+    if not rental:
+        conn.close()
+        return jsonify({"error": "Rental asset not found"}), 404
+
+    conn.execute(
+        """
+        UPDATE rentals
+        SET status='Returned To Vendor'
+        WHERE id=?
+        """,
+        (rental_id,),
+    )
+
+    conn.execute(
+    """
+    INSERT INTO history (
+        employee_id,
+        rental_id,
+        emp_name,
+        emp_id,
+        asset_type,
+        brand_model,
+        serial_number,
+        issue_date,
+        return_date,
+        status,
+        remarks,
+        asset_source
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+    (
+        None,
+        rental["id"],
+        rental["vendor_name"],
+        "VENDOR",
+        "Rental Asset",
+        rental["laptop_name"],
+        rental["serial_number"],
+        datetime.now().isoformat(),
+        datetime.now().isoformat(),
+        "Returned To Vendor",
+        "Rental asset returned to vendor",
+        "rental",
+    ),
+)
+
+    conn.commit()
+
+    send_vendor_return_email(dict(rental))
+
+    conn.close()
+
+    return jsonify({
+        "message": "Rental asset returned to vendor successfully"
+    })
 
 @main.route("/returned-assets", methods=["GET"])
 @login_required
