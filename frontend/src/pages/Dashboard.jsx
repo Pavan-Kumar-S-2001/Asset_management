@@ -102,7 +102,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow p-6 flex items-center justify-between">
+      <div className="bg-white rounded-2xl shadow p-4 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-blue-900">
             DTC INFOTECH ASSET TRACKER
@@ -174,8 +174,8 @@ export default function Dashboard() {
           </span>
         </div>
 
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-[900px] w-full text-sm">
             <thead>
               <tr className="bg-gray-100 text-left">
                 <th className="p-2">Employee</th>
@@ -236,12 +236,12 @@ function StatCard({
           <p className="text-gray-500 text-sm font-semibold">
   {title}
 </p>
-          <p className="text-4xl font-extrabold mt-1 text-black">{value}</p>
+          <p className="text-2xl md:text-4xl font-extrabold mt-1 text-black">{value}</p>
           <p className="text-sm text-gray-500 mt-2">
   {sub}
 </p>
         </div>
-        <div className="text-3xl">{icon}</div>
+        <div className="text-2xl md:text-4xl">{icon}</div>
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ function AppLayout() {
         backgroundImage: "url('/bg.jpg')", //this is for the image inside frontend
       }}
     >
-      <div className="flex gap-5 pt-16 md:pt-0">
+      <div className="flex flex-col md:flex-row gap-5 pt-16 md:pt-0">
         {/* ✅ Sidebar only for logged-in pages */}
         {!isLoginPage && <Sidebar />}
 

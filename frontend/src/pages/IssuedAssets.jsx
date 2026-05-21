@@ -277,7 +277,7 @@ const startExchange = (assignment) => {
         </select>
       </div>
 
-      <div className="overflow-auto">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm text-black">
           <thead>
             <tr className="bg-gray-100 text-left">

@@ -73,7 +73,7 @@ const navItemClick = () => {
     <aside
       className={`
         fixed left-0 top-0 z-50
-        h-screen w-80
+        h-screen w-72 sm:w-80
         bg-white shadow-xl
         flex flex-col
         transition-transform duration-300
@@ -97,7 +97,7 @@ const navItemClick = () => {
 
             <div className="overflow-hidden">
 
-              <h2 className="whitespace-nowrap text-sm font-extrabold text-blue-900">
+              <h2 className="text-xs md:text-sm font-extrabold text-blue-900 break-words">
                 {companyName}
               </h2>
 
