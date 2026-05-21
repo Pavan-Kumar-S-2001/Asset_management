@@ -105,13 +105,17 @@ export default function IssueReturn() {
     tracking_number: "",
   });
 
-  const [rentalAddForm, setRentalAddForm] = useState({
-    laptop_name: "",
-    serial_number: "",
-    configuration: "",
-    po_date: "",
-    end_date: "",
-  });
+ const [rentalAddForm, setRentalAddForm] = useState({
+  laptop_name: "",
+  serial_number: "",
+  configuration: "",
+
+  vendor_name: "",
+  vendor_email: "",
+
+  po_date: "",
+  end_date: "",
+});
 
   const [editingRental, setEditingRental] = useState(null);
   const [editRentalForm, setEditRentalForm] = useState({
@@ -468,12 +472,16 @@ export default function IssueReturn() {
       await api.post("/rentals", rentalAddForm);
       notifySuccess("Rental asset added successfully");
       setRentalAddForm({
-        laptop_name: "",
-        serial_number: "",
-        configuration: "",
-        po_date: "",
-        end_date: "",
-      });
+  laptop_name: "",
+  serial_number: "",
+  configuration: "",
+
+  vendor_name: "",
+  vendor_email: "",
+
+  po_date: "",
+  end_date: "",
+});
       await loadAll();
     } catch (error) {
       console.error(error);
@@ -898,6 +906,28 @@ export default function IssueReturn() {
           setRentalAddForm((current) => ({
             ...current,
             configuration: event.target.value,
+          }))
+        }
+      />
+
+      <Input
+  placeholder="Vendor Name"
+  value={rentalAddForm.vendor_name}
+  onChange={(event) =>
+    setRentalAddForm((current) => ({
+      ...current,
+      vendor_name: event.target.value,
+    }))
+  }
+/>
+
+      <Input
+        placeholder="Vendor Email"
+        value={rentalAddForm.vendor_email}
+        onChange={(event) =>
+          setRentalAddForm((current) => ({
+            ...current,
+            vendor_email: event.target.value,
           }))
         }
       />

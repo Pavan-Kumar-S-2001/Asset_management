@@ -163,14 +163,7 @@ const returnRentalToVendor = async (rentalId) => {
     </div>
 
     <div className="flex gap-3">
-    <button
-      onClick={() => setShowRentalAssets(!showRentalAssets)}
-      className="rounded-xl bg-black px-4 py-2 font-bold text-white"
-    >
-      {showRentalAssets
-        ? "Hide Rental Assets"
-        : "Show Rental Assets"}
-    </button>
+   
 
     <button
       onClick={exportRentals}
@@ -187,7 +180,7 @@ const returnRentalToVendor = async (rentalId) => {
     </button>
   </div>
 </div>
-{showRentalAssets && (
+<>
   <> 
         <div className="mt-4">
           <Input
@@ -305,7 +298,7 @@ const returnRentalToVendor = async (rentalId) => {
           </div>
       )}
   </>
-)}
+</>
 </div>
     </div>
   );

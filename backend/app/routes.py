@@ -1111,6 +1111,7 @@ def list_rentals():
             ) AS employee_code
         FROM rentals r
         LEFT JOIN employees e ON r.current_employee_id = e.id
+        WHERE r.status != 'Returned To Vendor'
         ORDER BY r.id DESC
         """
     ).fetchall()
@@ -1125,35 +1126,34 @@ def add_rental():
     data = request.json or {}
 
     conn = get_db_connection()
+
     conn.execute(
         """
         INSERT INTO rentals
-(
-    laptop_name,
-    serial_number,
-    configuration,
-    vendor_name,
-    vendor_email,
-    po_date,
-    end_date,
-    status
-)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (
+            laptop_name,
+            serial_number,
+            configuration,
+            vendor_name,
+            vendor_email,
+            po_date,
+            end_date,
+            status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-    data.get("laptop_name"),
-    data.get("serial_number"),
-    data.get("configuration"),
-
-    data.get("vendor_name"),
-    data.get("vendor_email"),
-
-    data.get("po_date"),
-    data.get("end_date"),
-
-    RENTAL_STATUS_AVAILABLE,
-),
+            data.get("laptop_name"),
+            data.get("serial_number"),
+            data.get("configuration"),
+            data.get("vendor_name"),
+            data.get("vendor_email"),
+            data.get("po_date"),
+            data.get("end_date"),
+            RENTAL_STATUS_AVAILABLE,
+        ),
     )
+
     conn.commit()
     conn.close()
 
