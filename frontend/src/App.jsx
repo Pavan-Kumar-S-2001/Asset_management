@@ -1,12 +1,13 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import ProtectedRoute from "./components/ProtectedRoute";
-
+import RentalAssets from "./pages/RentalAssets";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import IssuedAssets from "./pages/IssuedAssets";
 import Employees from "./pages/Employees";
 import Assets from "./pages/Assets";
+import OwnAssetsList from "./pages/OwnAssetsList";
 import IssueReturn from "./pages/IssueReturn";
 import History from "./pages/History";
 
@@ -60,6 +61,14 @@ function AppLayout() {
               }
             />
             <Route
+              path="/own-assets"
+              element={
+                <ProtectedRoute>
+                  <OwnAssetsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/issue-return"
               element={
                 <ProtectedRoute>
@@ -73,6 +82,14 @@ function AppLayout() {
               element={
                 <ProtectedRoute>
                   <IssuedAssets />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rental-assets"
+              element={
+                <ProtectedRoute>
+                  <RentalAssets />
                 </ProtectedRoute>
               }
             />

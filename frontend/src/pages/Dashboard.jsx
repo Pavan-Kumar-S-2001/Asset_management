@@ -43,9 +43,9 @@ export default function Dashboard() {
     (a) => a.status === "Available"
   ).length;
 
-  const issuedAssets = assets.filter(
-    (a) => a.status === "Issued"
-  ).length;
+  const issuedAssets = history.filter(
+  (h) => h.status === "Issued"
+).length;
 
   const rentalAssets = rentals.length;
 
@@ -136,7 +136,7 @@ export default function Dashboard() {
     value={stats.ownAssets}
     sub="Company Assets"
     icon="💻"
-    onClick={() => navigate("/assets")}
+    onClick={() => navigate("/own-assets")}
   />
 
   <StatCard
@@ -144,7 +144,7 @@ export default function Dashboard() {
     value={stats.rentalAssets}
     sub="Rental Asset Count"
     icon="🏢"
-    onClick={() => navigate("/issue-return")}
+    onClick={() => navigate("/rental-assets")}
   />
 
   <StatCard
@@ -152,7 +152,7 @@ export default function Dashboard() {
     value={stats.availableAssets}
     sub="Ready to Issue"
     icon="✅"
-    onClick={() => navigate("/assets")}
+    onClick={() => navigate("/own-assets")}
   />
 
   <StatCard
@@ -160,7 +160,7 @@ export default function Dashboard() {
     value={stats.issuedAssets}
     sub="Currently Assigned"
     icon="📌"
-    onClick={() => navigate("/issue-return")}
+    onClick={() => navigate("/issued-assets")}
   />
 
 </div>

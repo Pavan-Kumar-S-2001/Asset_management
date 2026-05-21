@@ -836,269 +836,133 @@ export default function IssueReturn() {
           </form>
         </div>
 
-        
+        <div className="mt-5 flex flex-col gap-6">
 
-      <div className="rounded-2xl bg-white p-6 shadow">
-        <div className="flex items-start justify-between gap-3">
-  <div>
-    
-    <h2 className="text-2xl font-bold text-black">
-      Rental Asset List
-    </h2>
+  {/* Add Rental Asset */}
+  <div className="rounded-2xl border bg-white p-4 shadow">
 
-    <p className="text-sm text-gray-600">
-      Upload, review, edit, and track rental assets.
-    </p>
-  </div>
+    <div className="mb-3 flex items-center justify-between">
+      <h3 className="font-bold">Add Rental Asset</h3>
 
-  <div className="flex gap-3">
-    <button
-      onClick={() => setShowRentalAssets(!showRentalAssets)}
-      className="rounded-xl bg-black px-4 py-2 font-bold text-white"
-    >
-      {showRentalAssets
-        ? "Hide Rental Assets"
-        : "Show Rental Assets"}
-    </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={exportRentals}
+          className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-bold text-white"
+        >
+          Export CSV
+        </button>
 
-    <button
-      onClick={exportRentals}
-      className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white"
-    >
-      Export CSV
-    </button>
-
-    <button
-      onClick={loadAll}
-      className="rounded-xl bg-black px-4 py-2 font-bold text-white"
-    >
-      {rentalLoading ? "Loading..." : "Refresh"}
-    </button>
-  </div>
-</div>
-{showRentalAssets && (
-  <> 
-        <div className="mt-4">
-          <Input
-            placeholder="Search rental by name / serial / status / employee..."
-            value={rentalSearch}
-            onChange={(event) => setRentalSearch(event.target.value)}
+        <label className="cursor-pointer rounded-lg bg-blue-600 px-3 py-1 text-xs font-bold text-white">
+          Import CSV
+          <input
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={importRentalsCSV}
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Showing {filteredRentals.length} of {rentals.length}
-          </p>
-        </div>
+        </label>
+      </div>
+    </div>
 
-        <div className="mt-5 overflow-auto rounded-xl border">
-          <table className="w-full text-sm text-black">
-            <thead className="sticky top-0 bg-gray-100">
-              <tr className="text-left">
-                <th className="p-2">Laptop</th>
-                <th className="p-2">Serial</th>
-                <th className="p-2">Configuration</th>
-                <th className="p-2">Status</th>
-                <th className="p-2">Employee</th>
-                <th className="p-2">Dates</th>
-                <th className="p-2 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedRentals.map((rental) => (
-                <tr key={rental.id} className="border-b hover:bg-gray-50">
-                  <td className="p-2 font-semibold">
-                    {rental.laptop_name || "-"}
-                  </td>
-                  <td className="p-2 font-mono">
-                    {rental.serial_number || "-"}
-                  </td>
-                  <td className="p-2">{rental.configuration || "-"}</td>
-                  <td className="p-2">{statusBadge(rental.status)}</td>
-                  <td className="p-2">
-                    <div>{rental.employee_name || "-"}</div>
-                    <div className="text-xs text-gray-500">
-                      {rental.employee_code || ""}
-                    </div>
-                  </td>
-                  <td className="p-2 text-xs text-gray-600">
-                    <div>
-                      Issue:{" "}
-                      {rental.issue_date
-                        ? new Date(rental.issue_date).toLocaleString()
-                        : "-"}
-                    </div>
-                    <div>
-                      Return:{" "}
-                      {rental.return_date
-                        ? new Date(rental.return_date).toLocaleString()
-                        : "-"}
-                    </div>
-                  </td>
-                  <td className="p-2">
-                    <div className="flex justify-center gap-2">
-                      <button
-                        onClick={() => openEditRental(rental)}
-                        className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-bold text-white"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteRental(rental.id)}
-                        className="rounded-lg bg-red-600 px-3 py-1 text-xs font-bold text-white"
-                      >
-                        Delete
-                      </button>
-                      <button
-                      onClick={() => returnRentalToVendor(rental.id)}
-                      className="rounded-lg bg-orange-600 px-3 py-1 text-xs font-bold text-white"
-                    >
-                      Return To Vendor
-                    </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+    <form
+      onSubmit={addRentalAsset}
+      className="grid grid-cols-1 gap-3 md:grid-cols-2"
+    >
+      <Input
+        placeholder="Laptop Name (example: Dell 5420)"
+        value={rentalAddForm.laptop_name}
+        onChange={(event) =>
+          setRentalAddForm((current) => ({
+            ...current,
+            laptop_name: event.target.value,
+          }))
+        }
+      />
 
-              {filteredRentals.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-4 text-center text-gray-500">
-                    No rental assets found
-                  </td>
-                </tr>
-                
-              )}
-            </tbody>
-          </table>
-        </div>
+      <Input
+        placeholder="Serial Number"
+        value={rentalAddForm.serial_number}
+        onChange={(event) =>
+          setRentalAddForm((current) => ({
+            ...current,
+            serial_number: event.target.value,
+          }))
+        }
+      />
 
-        {totalPages > 1 && (
-          <div className="mt-3 flex items-center justify-between">
-            <button
-              className="rounded-lg bg-gray-200 px-3 py-1 text-xs font-bold text-black disabled:opacity-50"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
-            >
-              Prev
-            </button>
-            <span className="text-xs font-semibold">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              className="rounded-lg bg-gray-200 px-3 py-1 text-xs font-bold text-black disabled:opacity-50"
-              disabled={currentPage === totalPages}
-              onClick={() =>
-                setCurrentPage((page) => Math.min(page + 1, totalPages))
-              }
-            >
-              Next
-            </button>
-          </div>
-      )}
-  </>
-)}
+      <Input
+        placeholder="Configuration"
+        value={rentalAddForm.configuration}
+        onChange={(event) =>
+          setRentalAddForm((current) => ({
+            ...current,
+            configuration: event.target.value,
+          }))
+        }
+      />
+
+      <Input
+        placeholder="PO Date (YYYY-MM-DD)"
+        value={rentalAddForm.po_date}
+        onChange={(event) =>
+          setRentalAddForm((current) => ({
+            ...current,
+            po_date: event.target.value,
+          }))
+        }
+      />
+
+      <Input
+        placeholder="End Date (YYYY-MM-DD)"
+        value={rentalAddForm.end_date}
+        onChange={(event) =>
+          setRentalAddForm((current) => ({
+            ...current,
+            end_date: event.target.value,
+          }))
+        }
+      />
+
+      <button className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white md:col-span-2">
+        Add Rental Asset
+      </button>
+    </form>
+
+  </div>
+
+  {/* Status Summary */}
+  <div className="rounded-2xl border bg-white p-4 shadow">
+
+    <h3 className="mb-3 font-bold">Status Summary</h3>
+
+    <div className="grid gap-3 text-sm text-gray-700">
+
+      <div className="rounded-xl bg-green-50 px-3 py-2">
+        Available:
+        <b> {rentals.filter((r) => r.status === "Available").length}</b>
+      </div>
+
+      <div className="rounded-xl bg-yellow-50 px-3 py-2">
+        Assigned:
+        <b> {rentals.filter((r) => r.status === "Assigned").length}</b>
+      </div>
+
+      <div className="rounded-xl bg-blue-50 px-3 py-2">
+        Returned:
+        <b> {rentals.filter((r) => r.status === "Returned").length}</b>
+      </div>
+
+      <div className="rounded-xl bg-slate-50 px-3 py-2">
+        Ready to issue from main flow:
+        <b> {issueableRentals.length}</b>
+      </div>
+
+    </div>
+
+  </div>
+
 </div>
-        <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="rounded-2xl border bg-white p-4 lg:col-span-2 shadow">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-bold">Add Rental Asset</h3>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={exportRentals}
-                  className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-bold text-white"
-                >
-                  Export CSV
-                </button>
-                <label className="cursor-pointer rounded-lg bg-blue-600 px-3 py-1 text-xs font-bold text-white">
-                  Import CSV
-                  <input
-                    type="file"
-                    accept=".csv"
-                    className="hidden"
-                    onChange={importRentalsCSV}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <form
-              onSubmit={addRentalAsset}
-              className="grid grid-cols-1 gap-3 md:grid-cols-2"
-            >
-              <Input
-                placeholder="Laptop Name (example: Dell 5420)"
-                value={rentalAddForm.laptop_name}
-                onChange={(event) =>
-                  setRentalAddForm((current) => ({
-                    ...current,
-                    laptop_name: event.target.value,
-                  }))
-                }
-              />
-              <Input
-                placeholder="Serial Number"
-                value={rentalAddForm.serial_number}
-                onChange={(event) =>
-                  setRentalAddForm((current) => ({
-                    ...current,
-                    serial_number: event.target.value,
-                  }))
-                }
-              />
-              <Input
-                placeholder="Configuration"
-                value={rentalAddForm.configuration}
-                onChange={(event) =>
-                  setRentalAddForm((current) => ({
-                    ...current,
-                    configuration: event.target.value,
-                  }))
-                }
-              />
-              <Input
-                placeholder="PO Date (YYYY-MM-DD)"
-                value={rentalAddForm.po_date}
-                onChange={(event) =>
-                  setRentalAddForm((current) => ({
-                    ...current,
-                    po_date: event.target.value,
-                  }))
-                }
-              />
-              <Input
-                placeholder="End Date (YYYY-MM-DD)"
-                value={rentalAddForm.end_date}
-                onChange={(event) =>
-                  setRentalAddForm((current) => ({
-                    ...current,
-                    end_date: event.target.value,
-                  }))
-                }
-              />
-              <button className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white md:col-span-2">
-                Add Rental Asset
-              </button>
-            </form>
-          </div>
-
-          <div className="rounded-2xl border bg-white p-4 shadow">
-            <h3 className="mb-3 font-bold">Status Summary</h3>
-            <div className="grid gap-3 text-sm text-gray-700">
-              <div className="rounded-xl bg-green-50 px-3 py-2">
-                Available: <b>{rentals.filter((r) => r.status === "Available").length}</b>
-              </div>
-              <div className="rounded-xl bg-yellow-50 px-3 py-2">
-                Assigned: <b>{rentals.filter((r) => r.status === "Assigned").length}</b>
-              </div>
-              <div className="rounded-xl bg-blue-50 px-3 py-2">
-                Returned: <b>{rentals.filter((r) => r.status === "Returned").length}</b>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-3 py-2">
-                Ready to issue from main flow: <b>{issueableRentals.length}</b>
-              </div>
-            </div>
-          </div>
-        </div>
 
 
       {editingRental && (

@@ -151,9 +151,17 @@ const navItemClick = () => {
             menuItem + (isActive ? " bg-black text-white" : "")
           }
         >
-          💻 Assets
+          💻 Add Own Assets
         </NavLink>
-
+        <NavLink
+  to="/own-assets"
+  onClick={navItemClick}
+  className={({ isActive }) =>
+    menuItem + (isActive ? " bg-black text-white" : "")
+  }
+>
+  🧾 Own Assets List
+</NavLink>
         <NavLink
           to="/issue-return"
           onClick={navItemClick}
@@ -161,7 +169,7 @@ const navItemClick = () => {
             menuItem + (isActive ? " bg-black text-white" : "")
           }
         >
-          🔁 Issued / Return
+          🔁 Assign Assets
         </NavLink>
 
         <NavLink
@@ -174,6 +182,16 @@ const navItemClick = () => {
           📦 Issued Assets
         </NavLink>
 
+          <NavLink
+            to="/rental-assets"
+            onClick={navItemClick}
+            className={({ isActive }) =>
+              menuItem + (isActive ? " bg-black text-white" : "")
+            }
+          >
+            🧾 Rental Assets List
+          </NavLink>
+
         <NavLink
           to="/history"
           onClick={navItemClick}
@@ -181,6 +199,7 @@ const navItemClick = () => {
             menuItem + (isActive ? " bg-black text-white" : "")
           }
         >
+          
           🧾 History
         </NavLink>
 
