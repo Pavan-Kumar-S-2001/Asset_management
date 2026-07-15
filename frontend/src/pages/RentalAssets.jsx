@@ -48,6 +48,17 @@ export default function RentalAssets() {
    const [rentalSearch, setRentalSearch] = useState("");
    const [currentPage, setCurrentPage] = useState(1);
 
+   const [editingRental, setEditingRental] = useState(null);
+
+const [editRentalForm, setEditRentalForm] = useState({
+  laptop_name: "",
+  serial_number: "",
+  configuration: "",
+  po_date: "",
+  end_date: "",
+  status: "Available",
+});
+
    const rentalsPerPage = 10;
 
 const loadAll = async () => {
@@ -106,21 +117,39 @@ const exportRentals = () => {
 };
 
 const openEditRental = (rental) => {
-  console.log("Edit rental", rental);
+  setEditingRental(rental);
+
+  setEditRentalForm({
+    laptop_name: rental.laptop_name || "",
+    serial_number: rental.serial_number || "",
+    configuration: rental.configuration || "",
+    po_date: rental.po_date || "",
+    end_date: rental.end_date || "",
+    status: rental.status || "Available",
+  });
 };
 
-const deleteRental = async (rentalId) => {
-  try {
-    await api.delete(`/rentals/${rentalId}`);
 
-    notifySuccess("Rental deleted successfully");
+const saveEditRental = async () => {
+  if (!editingRental) return;
+
+  try {
+    await api.put(
+      `/rentals/${editingRental.id}`,
+      editRentalForm
+    );
+
+    notifySuccess("Rental updated successfully");
+
+    setEditingRental(null);
 
     await loadAll();
   } catch (error) {
     console.error(error);
 
     notifyError(
-      error?.response?.data?.error || "Failed to delete rental"
+      error?.response?.data?.error ||
+      "Failed to update rental"
     );
   }
 };
@@ -299,6 +328,111 @@ const returnRentalToVendor = async (rentalId) => {
       )}
   </>
 </>
+{editingRental && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+
+    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
+
+      <h2 className="mb-4 text-xl font-bold">
+        Edit Rental Asset
+      </h2>
+
+      <div className="grid gap-3">
+
+        <Input
+          placeholder="Laptop Name"
+          value={editRentalForm.laptop_name}
+          onChange={(e) =>
+            setEditRentalForm({
+              ...editRentalForm,
+              laptop_name: e.target.value,
+            })
+          }
+        />
+
+        <Input
+          placeholder="Serial Number"
+          value={editRentalForm.serial_number}
+          onChange={(e) =>
+            setEditRentalForm({
+              ...editRentalForm,
+              serial_number: e.target.value,
+            })
+          }
+        />
+
+        <Input
+          placeholder="Configuration"
+          value={editRentalForm.configuration}
+          onChange={(e) =>
+            setEditRentalForm({
+              ...editRentalForm,
+              configuration: e.target.value,
+            })
+          }
+        />
+
+        <Input
+          placeholder="PO Date"
+          value={editRentalForm.po_date}
+          onChange={(e) =>
+            setEditRentalForm({
+              ...editRentalForm,
+              po_date: e.target.value,
+            })
+          }
+        />
+
+        <Input
+          placeholder="End Date"
+          value={editRentalForm.end_date}
+          onChange={(e) =>
+            setEditRentalForm({
+              ...editRentalForm,
+              end_date: e.target.value,
+            })
+          }
+        />
+
+        <select
+          className="w-full rounded-xl border bg-white p-2 text-black"
+          value={editRentalForm.status}
+          onChange={(e) =>
+            setEditRentalForm({
+              ...editRentalForm,
+              status: e.target.value,
+            })
+          }
+        >
+          <option value="Available">Available</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Returned">Returned</option>
+        </select>
+
+        <div className="mt-2 flex gap-3">
+
+          <button
+            onClick={saveEditRental}
+            className="flex-1 rounded-xl bg-green-600 px-4 py-2 font-bold text-white"
+          >
+            Save
+          </button>
+
+          <button
+            onClick={() => setEditingRental(null)}
+            className="flex-1 rounded-xl bg-gray-200 px-4 py-2 font-bold text-black"
+          >
+            Cancel
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+)}
 </div>
     </div>
   );
