@@ -34,4 +34,5 @@ services:
 
 volumes:
   backend_data:
+    external: true
     name: asset-management_backend_data
