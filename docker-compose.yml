@@ -1,18 +1,37 @@
 version: "3.9"
 
 services:
-
   backend:
     build: ./backend
     container_name: asset_backend
     ports:
       - "5000:5000"
-    
+
+    environment:
+      DATA_DIR: /app/data
+      MAIL_SERVER: smtp.office365.com
+      MAIL_PORT: "587"
+      MAIL_USERNAME: "it@dtcinfotech.com"
+      MAIL_PASSWORD: ""
+      MAIL_USE_TLS: "true"
+      ADMIN_EMAIL: ""
+
+    volumes:
+      - backend_data:/app/data
+
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
     container_name: asset_frontend
     ports:
       - "5173:5173"
+
     depends_on:
       - backend
+
+    restart: unless-stopped
+
+volumes:
+  backend_data:
+    name: asset-management_backend_data
